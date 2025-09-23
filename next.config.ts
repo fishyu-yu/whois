@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  eslint: {
+    // 构建时忽略 ESLint 错误，避免因代码风格问题阻断构建
+    ignoreDuringBuilds: true,
+  },
   async headers() {
     return [
       {

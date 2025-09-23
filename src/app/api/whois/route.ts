@@ -29,6 +29,11 @@ function validateInput(query: string, type: string): { valid: boolean; error?: s
     return { valid: false, error: "查询内容不能为空" }
   }
 
+  // 只允许域名查询
+  if (type !== "domain") {
+    return { valid: false, error: "仅支持域名查询" }
+  }
+
   // 基本的安全检查，防止命令注入
   if (/[;&|`$(){}[\]\\]/.test(trimmedQuery)) {
     return { valid: false, error: "查询内容包含非法字符" }
@@ -269,17 +274,6 @@ async function performStandardWhoisQuery(query: string, type: string): Promise<a
     case "domain":
       command = `whois "${query}"`
       break
-    case "ipv4":
-    case "ipv6":
-      command = `whois "${query}"`
-      break
-    case "asn":
-      const asnNumber = query.replace(/^AS/i, "")
-      command = `whois "AS${asnNumber}"`
-      break
-    case "cidr":
-      command = `whois "${query}"`
-      break
     default:
       command = `whois "${query}"`
   }
@@ -448,38 +442,62 @@ function getCNDomainMockData(query: string): any {
 }
 
 export async function POST(request: NextRequest) {
-  let requestBody: WhoisRequest | null = null;
-  
+  let requestBody: WhoisRequest | null = null
+  let rawBody: string | null = null
+
   try {
-    requestBody = await request.json()
-    
+    // 通过克隆请求体来分别尝试 json 和 text，避免重复读取导致的错误
+    const jsonReq = request.clone()
+    try {
+      requestBody = await jsonReq.json()
+    } catch {
+      const textReq = request.clone()
+      rawBody = await textReq.text()
+      try {
+        requestBody = JSON.parse(rawBody) as WhoisRequest
+      } catch {
+        return NextResponse.json(
+          {
+            query: '',
+            type: 'unknown',
+            success: false,
+            error: '请求体不是有效的 JSON',
+            data: null,
+            timestamp: Date.now(),
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     if (!requestBody) {
       return NextResponse.json(
-        { 
+        {
           query: '',
           type: 'unknown',
           success: false,
           error: '请求体为空',
           data: null,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         },
         { status: 400 }
       )
     }
 
-    const { query, type, dataSource } = requestBody
+    const { query, type: rawType, dataSource } = requestBody
+    const type = rawType || 'domain'
 
     // 验证输入
     const validation = validateInput(query, type)
     if (!validation.valid) {
       return NextResponse.json(
-        { 
+        {
           query: query || '',
           type: type || 'unknown',
           success: false,
           error: validation.error,
           data: null,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         },
         { status: 400 }
       )
@@ -494,19 +512,22 @@ export async function POST(request: NextRequest) {
       success: true,
       data: result,
       error: null,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     })
   } catch (error: any) {
-    console.error("Whois查询错误:", error)
-    
-    return NextResponse.json({
-      query: requestBody?.query || 'unknown',
-      type: requestBody?.type || 'unknown',
-      success: false,
-      error: "查询失败，请稍后重试",
-      data: null,
-      timestamp: Date.now()
-    }, { status: 500 })
+    console.error('Whois查询错误:', error)
+
+    return NextResponse.json(
+      {
+        query: requestBody?.query || 'unknown',
+        type: requestBody?.type || 'unknown',
+        success: false,
+        error: error?.message || '查询失败，请稍后重试',
+        data: null,
+        timestamp: Date.now(),
+      },
+      { status: 500 }
+    )
   }
 }
 

@@ -177,8 +177,8 @@ export default function Home() {
             {/* 查询结果 */}
             <WhoisResult
               data={currentResult}
-              onExport={handleExport}
-              onShare={handleShare}
+              onExport={() => currentResult && handleExport(currentResult)}
+              onShare={() => currentResult && handleShare(currentResult)}
             />
 
             {/* 功能介绍 */}
@@ -186,9 +186,9 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">🌍 全面支持</CardTitle>
+                    <CardTitle className="text-lg">🌍 域名查询</CardTitle>
                     <CardDescription>
-                      支持域名、IPv4/IPv6地址、ASN号码和CIDR网段查询
+                      专业的域名信息查询服务，支持各种顶级域名
                     </CardDescription>
                   </CardHeader>
                 </Card>
