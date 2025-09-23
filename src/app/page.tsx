@@ -33,7 +33,7 @@ export default function Home() {
       }
     }
   }, [])
-  const handleQuery = async (query: string, type: string) => {
+  const handleQuery = async (query: string, type: string, dataSource?: string) => {
     setLoading(true)
     try {
       const response = await fetch("/api/whois", {
@@ -41,7 +41,7 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query, type }),
+        body: JSON.stringify({ query, type, dataSource }),
       })
 
       if (!response.ok) {

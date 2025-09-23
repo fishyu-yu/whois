@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Download, Share2, Calendar, Globe, Server, User, Info, ExternalLink } from "lucide-react"
+import { Copy, Download, Share2, Calendar, Globe, Server, User, Info, ExternalLink, Flag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,6 +15,13 @@ interface WhoisData {
   type: string
   result: any
   timestamp: string
+  dataSource?: string  // 数据来源：registrar, registry, standard, rdap, rdap-registrar, rdap-registry
+  rdapSource?: 'registrar' | 'registry'  // RDAP数据源类型
+  domainInfo?: {       // 域名相关信息
+    validation: any
+    isCountryTLD: boolean
+    cctldInfo: any
+  }
 }
 
 interface WhoisResultProps {
@@ -222,8 +229,9 @@ ${data.result}`;
     const info: { [key: string]: any } = {};
     const lines = rawData.split('\n');
     
-    // 字段映射
+    // 字段映射 - 支持中文和英文字段
     const fieldMapping: { [key: string]: string } = {
+      // 英文字段映射
       'Domain Name': '域名',
       'Registry Domain ID': '注册局域名ID',
       'Registrar WHOIS Server': '注册商WHOIS服务器',
@@ -239,7 +247,14 @@ ${data.result}`;
       'Name Server': 'NS服务器',
       'DNSSEC': 'DNSSEC',
       'URL of the ICANN Whois Inaccuracy Complaint Form': 'ICANN投诉表单',
-      'Registry': '注册局'
+      'Registry': '注册局',
+      // .cn域名特有字段映射（基于真实WHOIS返回格式）
+      'ROID': '注册对象标识符',
+      'Registrant': '注册人',
+      'Registrant Contact Email': '注册人邮箱',
+      'Sponsoring Registrar': '注册商',
+      'Registration Time': '注册时间',
+      'Expiration Time': '到期时间'
     };
 
     for (const line of lines) {
@@ -285,6 +300,82 @@ ${data.result}`;
     return result;
   };
 
+  // 获取数据来源信息
+  const getDataSourceInfo = () => {
+    const parsed = data.result.parsed || data.result
+    const dataSource = data.dataSource || 'standard'
+    
+    let sourceType = ''
+    let sourceName = ''
+    let sourceIcon = null
+    
+    switch (dataSource) {
+      case 'registrar':
+        sourceType = '注册商数据'
+        sourceName = parsed.registrar || parsed['Registrar'] || '未知注册商'
+        sourceIcon = <User className="h-4 w-4" />
+        break
+      case 'registry':
+        sourceType = '注册局数据'
+        // 优先使用ccTLD信息
+        if (data.domainInfo?.isCountryTLD && data.domainInfo?.cctldInfo) {
+          sourceName = data.domainInfo.cctldInfo.registry || data.domainInfo.cctldInfo.country
+        } else {
+          // 根据域名后缀推断注册局
+          if (data.query.endsWith('.com') || data.query.endsWith('.net')) {
+            sourceName = 'VeriSign'
+          } else if (data.query.endsWith('.org')) {
+            sourceName = 'PIR (Public Interest Registry)'
+          } else if (data.query.endsWith('.cn')) {
+            sourceName = 'CNNIC'
+          } else {
+            sourceName = parsed.registry || parsed['Registry'] || '未知注册局'
+          }
+        }
+        sourceIcon = data.domainInfo?.isCountryTLD ? <Flag className="h-4 w-4" /> : <Server className="h-4 w-4" />
+        break
+      case 'rdap-registrar':
+        sourceType = 'RDAP注册商数据'
+        sourceName = parsed.registrar || parsed['Registrar'] || 'Registration Data Access Protocol (注册商)'
+        sourceIcon = <User className="h-4 w-4" />
+        break
+      case 'rdap-registry':
+        sourceType = 'RDAP注册局数据'
+        // 优先使用ccTLD信息
+        if (data.domainInfo?.isCountryTLD && data.domainInfo?.cctldInfo) {
+          sourceName = data.domainInfo.cctldInfo.registry || data.domainInfo.cctldInfo.country
+        } else {
+          // 根据域名后缀推断注册局
+          if (data.query.endsWith('.com') || data.query.endsWith('.net')) {
+            sourceName = 'VeriSign RDAP'
+          } else if (data.query.endsWith('.org')) {
+            sourceName = 'PIR RDAP'
+          } else if (data.query.endsWith('.cn')) {
+            sourceName = 'CNNIC RDAP'
+          } else if (data.query.endsWith('.xyz')) {
+            sourceName = 'CentralNic RDAP'
+          } else {
+            sourceName = 'Registration Data Access Protocol (注册局)'
+          }
+        }
+        sourceIcon = data.domainInfo?.isCountryTLD ? <Flag className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />
+        break
+      case 'rdap':
+        sourceType = 'RDAP数据'
+        sourceName = 'Registration Data Access Protocol'
+        sourceIcon = <ExternalLink className="h-4 w-4" />
+        break
+      default:
+        sourceType = '标准查询'
+        sourceName = 'WHOIS服务器'
+        sourceIcon = <Globe className="h-4 w-4" />
+    }
+    
+    return { sourceType, sourceName, sourceIcon }
+  }
+
+  const { sourceType, sourceName, sourceIcon } = getDataSourceInfo()
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "domain":
@@ -321,6 +412,75 @@ ${data.result}`;
               <CardDescription className="text-sm">
                 {data.query} ({data.type}) - {new Date(data.timestamp).toLocaleString('zh-CN')}
               </CardDescription>
+              <div className="flex items-center gap-2 mt-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="secondary" className="flex items-center gap-1 cursor-help">
+                      {sourceIcon}
+                      {sourceType}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p className="font-medium">数据来源详情</p>
+                      <p className="text-sm">查询来源: {sourceName}</p>
+                      {data.dataSource === 'rdap' && (
+                        <p className="text-xs text-muted-foreground">
+                          RDAP提供结构化的JSON数据，比传统WHOIS更准确
+                        </p>
+                      )}
+                      {data.dataSource === 'registrar' && (
+                        <p className="text-xs text-muted-foreground">
+                          来自域名注册商的数据，通常包含详细的联系信息
+                        </p>
+                      )}
+                      {data.dataSource === 'registry' && (
+                        <p className="text-xs text-muted-foreground">
+                          来自域名注册局的权威数据
+                        </p>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                <span className="text-sm text-muted-foreground">
+                  查询来源: {sourceName}
+                </span>
+              </div>
+              
+              {/* 显示域名验证信息 */}
+              {data.domainInfo && data.type === 'domain' && (
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {data.domainInfo.validation?.isValid && (
+                    <>
+                      {data.domainInfo.validation.isSubdomain ? (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Globe className="h-3 w-3" />
+                          子域名
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Globe className="h-3 w-3" />
+                          根域名
+                        </Badge>
+                      )}
+                      
+                      {data.domainInfo.isCountryTLD && data.domainInfo.cctldInfo && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Flag className="h-3 w-3" />
+                          {data.domainInfo.cctldInfo.country} ({data.domainInfo.cctldInfo.tld})
+                        </Badge>
+                      )}
+                      
+                      {data.domainInfo.validation.isIDN && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Globe className="h-3 w-3" />
+                          国际化域名
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
