@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Docker 构建优化：启用 standalone 输出
+  output: 'standalone',
+  
   turbopack: {
     rules: {
       '*.svg': {

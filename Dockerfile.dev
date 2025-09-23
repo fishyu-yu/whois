@@ -1,0 +1,37 @@
+# 开发环境 Dockerfile
+FROM node:18-alpine AS development
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装系统依赖
+RUN apk add --no-cache \
+    libc6-compat \
+    curl
+
+# 复制 package 文件
+COPY package*.json ./
+
+# 安装所有依赖（包括开发依赖）
+RUN npm ci
+
+# 复制源代码
+COPY . .
+
+# 创建非 root 用户
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# 设置权限
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# 暴露端口
+EXPOSE 3000 9229
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# 开发模式启动命令
+CMD ["npm", "run", "dev"]
