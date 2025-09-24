@@ -10,24 +10,54 @@
 
 ## 2. 安装指南
 ### 环境要求
-- Node.js ≥ 18.17
-- npm（或可替换为 yarn/pnpm/bun）
+- Git（用于克隆仓库）
+- Node.js ≥ 18.17（建议使用最新 LTS 版本）
+- 包管理器：npm（也可使用 yarn/pnpm/bun）
 
 ### 安装与运行
+
+1) 克隆并进入项目目录
 ```bash
-# 安装依赖
+git clone https://github.com/fishyu-yu/whois.git
+cd whois
+```
+
+2) 安装依赖（任选其一）
+```bash
+# 使用 npm
 npm install
 
-# 启动开发环境
-npm run dev
+# 使用 pnpm
+pnpm install
 
-# 构建生产版本
-npm run build
+# 使用 yarn
+yarn install
 
-# 启动生产服务
-npm start
+# 使用 bun
+bun install
 ```
-访问地址：http://localhost:3000
+
+3) 开发模式（默认端口 3000）
+```bash
+npm run dev
+# 访问 http://localhost:3000
+```
+
+4) 生产构建与启动
+```bash
+npm run build
+npm start
+# 访问 http://localhost:3000
+```
+
+### 可选配置
+- 端口变更：开发模式下可使用 PORT 环境变量或 -p 参数指定端口（示例：Windows PowerShell）
+```powershell
+$env:PORT=3001; npm run dev
+# 或
+npm run dev -- -p 3001
+```
+- 包管理器替换：如使用 pnpm/yarn/bun，请将上述命令中的 npm 替换为对应工具。
 
 ## 3. 使用说明
 ### 前端 UI
