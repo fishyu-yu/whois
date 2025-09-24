@@ -101,90 +101,92 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* 头部导航 */}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* 头部导航（整体居中、对称） */}
       <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">Whois 查询工具</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-                <Github className="h-4 w-4 mr-1" />
-                GitHub
-              </a>
-            </Button>
-            <ThemeToggle />
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex flex-col items-center gap-3">
+            <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
+            <div className="flex items-center justify-center gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                  <Github className="h-4 w-4 mr-1" />
+                  GitHub
+                </a>
+              </Button>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
-      {/* 主要内容 */}
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        <div className="grid grid-cols-1 gap-8">
-          <div className="space-y-8">
-            {/* 查询表单 */}
+      {/* 主要内容（垂直+水平居中） */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-3xl mx-auto space-y-8">
+          {/* 查询表单 */}
+          <div className="mx-auto w-full">
             <WhoisForm onSubmit={handleQuery} loading={loading} />
+          </div>
 
-            {/* 查询结果 */}
+          {/* 查询结果 */}
+          <div className="mx-auto w-full">
             <WhoisResult
               data={currentResult}
               onExport={() => currentResult && handleExport(currentResult)}
               onShare={() => currentResult && handleShare(currentResult)}
             />
-
-            {/* 功能介绍 */}
-            {!currentResult && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">🌍 域名查询</CardTitle>
-                    <CardDescription>
-                      专业的域名信息查询服务，支持各种顶级域名
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">📱 响应式设计</CardTitle>
-                    <CardDescription>
-                      完美适配移动端、平板和桌面设备，支持PWA安装
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">🌈 主题切换</CardTitle>
-                    <CardDescription>
-                      内置亮/暗色主题，自动匹配系统主题偏好
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">📦 结果导出</CardTitle>
-                    <CardDescription>
-                      支持查询结果导出和分享，便于保存和传播
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">🚀 高性能</CardTitle>
-                    <CardDescription>
-                      基于Next.js构建，支持无服务器部署和缓存优化
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </div>
-            )}
           </div>
+
+          {/* 功能介绍（对称分布、文案居中） */}
+          {!currentResult && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader className="items-center text-center">
+                  <CardTitle className="text-lg">🌍 域名查询</CardTitle>
+                  <CardDescription>
+                    专业的域名信息查询服务，支持各种顶级域名
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="items-center text-center">
+                  <CardTitle className="text-lg">📱 响应式设计</CardTitle>
+                  <CardDescription>
+                    完美适配移动端、平板和桌面设备，支持PWA安装
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="items-center text-center">
+                  <CardTitle className="text-lg">🌈 主题切换</CardTitle>
+                  <CardDescription>
+                    内置亮/暗色主题，自动匹配系统主题偏好
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="items-center text-center">
+                  <CardTitle className="text-lg">📦 结果导出</CardTitle>
+                  <CardDescription>
+                    支持查询结果导出和分享，便于保存和传播
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="items-center text-center">
+                  <CardTitle className="text-lg">🚀 高性能</CardTitle>
+                  <CardDescription>
+                    基于Next.js构建，支持无服务器部署和缓存优化
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          )}
         </div>
       </main>
 
       {/* 页脚 */}
-      <footer className="border-t mt-16">
+      <footer className="border-t mt-8">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
           <p>© 2024 Whois 查询工具. 基于 Next.js 和 Shadcn UI 构建.</p>
         </div>
