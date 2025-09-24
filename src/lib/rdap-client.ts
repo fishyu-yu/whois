@@ -107,6 +107,61 @@ const RDAP_SERVERS = {
   'site': 'https://rdap.centralnic.com/site'
 };
 
+// IANA RDAP Bootstrap动态映射（优先级低于静态表，作为补充）
+const BOOTSTRAP_URL = 'https://data.iana.org/rdap/dns.json';
+let dynamicRdapMap: Record<string, string> | null = null;
+let lastBootstrapFetch = 0;
+const BOOTSTRAP_TTL = 24 * 60 * 60 * 1000; // 24小时缓存
+
+async function ensureBootstrapLoaded(): Promise<void> {
+  const now = Date.now();
+  if (dynamicRdapMap && (now - lastBootstrapFetch) < BOOTSTRAP_TTL) return;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(BOOTSTRAP_URL, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'WHOIS-Tool/1.0'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch IANA RDAP bootstrap: ${res.status} ${res.statusText}`);
+    }
+    const data = await res.json();
+    const map: Record<string, string> = {};
+    if (Array.isArray(data.services)) {
+      for (const entry of data.services) {
+        const tlds: string[] = entry[0] || [];
+        const servers: string[] = entry[1] || [];
+        const serverBase = servers[0] || null;
+        if (serverBase) {
+          const normalizedBase = serverBase.replace(/\/+$/, '');
+          tlds.forEach(tld => {
+            const normalized = String(tld).replace('.', '').toLowerCase();
+            map[normalized] = normalizedBase;
+          });
+        }
+      }
+    }
+    dynamicRdapMap = map;
+    lastBootstrapFetch = now;
+  } catch (e) {
+    console.warn('IANA RDAP bootstrap fetch failed:', e);
+  }
+}
+
+async function getRDAPServerAsync(domain: string): Promise<string | null> {
+  const tld = getTLD(domain);
+  const staticServer = RDAP_SERVERS[tld as keyof typeof RDAP_SERVERS] || null;
+  if (staticServer) return staticServer;
+  await ensureBootstrapLoaded();
+  const server = dynamicRdapMap ? dynamicRdapMap[tld] : null;
+  return server || null;
+}
+
 /**
  * 获取域名的TLD
  */
@@ -127,13 +182,13 @@ function getRDAPServer(domain: string): string | null {
  * 执行RDAP域名查询，优先尝试注册服务机构RDAP
  */
 export async function queryDomainRDAP(domain: string): Promise<RDAPResponse & { rdapSource?: 'registrar' | 'registry' } | null> {
-  const server = getRDAPServer(domain)
+  const server = await getRDAPServerAsync(domain);
   if (!server) {
-    throw new Error(`No RDAP server found for domain: ${domain}`)
+    throw new Error(`No RDAP server found for domain: ${domain}`);
   }
 
   // 首先尝试从注册局RDAP获取注册服务机构信息
-  const registryUrl = `${server}/domain/${domain}`
+  const registryUrl = `${server}/domain/${domain}`;
   
   try {
     // 使用AbortController实现超时
@@ -245,12 +300,12 @@ export async function queryEntityRDAP(handle: string): Promise<RDAPResponse | nu
  */
 export function isRDAPSupported(domain: string): boolean {
   const tld = getTLD(domain);
-  return tld in RDAP_SERVERS;
+  if (tld in RDAP_SERVERS) return true;
+  return !!(dynamicRdapMap && dynamicRdapMap[tld]);
 }
 
-/**
- * 获取支持的TLD列表
- */
 export function getSupportedTLDs(): string[] {
-  return Object.keys(RDAP_SERVERS);
+  const staticTlds = Object.keys(RDAP_SERVERS);
+  const dynamicTlds = dynamicRdapMap ? Object.keys(dynamicRdapMap) : [];
+  return Array.from(new Set([...staticTlds, ...dynamicTlds]));
 }

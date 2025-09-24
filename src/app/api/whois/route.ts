@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { exec } from "child_process"
 import { promisify } from "util"
-import { validateDomain, formatDomainDisplay, DomainValidationResult } from "@/lib/domain-utils"
+import { validateDomain, formatDomainDisplay, DomainValidationResult, getDomainWhoisServer } from "@/lib/domain-utils"
 import { getCCTLDInfo, isCCTLD } from "@/lib/cctld-database"
 import { queryDomainRDAP, isRDAPSupported } from "@/lib/rdap-client"
 import { parseRDAPResponse, rdapToWhoisText } from "@/lib/rdap-parser"
@@ -59,16 +59,13 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
     if (type === "domain") {
       // 根据数据源选择查询方式
       if (dataSource === "rdap") {
-        // 强制使用RDAP
-        if (isRDAPSupported(query)) {
+        // 强制使用RDAP：直接尝试RDAP查询，失败则返回明确错误
+        try {
           const rdapData = await queryDomainRDAP(query)
           if (rdapData) {
             const parsedData = parseRDAPResponse(rdapData)
             const whoisText = rdapToWhoisText(parsedData)
-            
-            // 根据RDAP数据源类型设置dataSource
             const actualDataSource = rdapData.rdapSource === 'registrar' ? 'rdap-registrar' : 'rdap-registry'
-            
             result = {
               raw: whoisText,
               parsed: parsedData,
@@ -79,8 +76,8 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
               rdapSource: rdapData.rdapSource
             }
           }
-        } else {
-          throw new Error("该域名不支持RDAP查询")
+        } catch (e: any) {
+          throw new Error(e?.message || "该域名不支持RDAP查询或查询失败")
         }
       } else if (dataSource === "whois") {
         // 强制使用传统WHOIS
@@ -177,13 +174,9 @@ async function performDomainWhoisWithPriority(query: string): Promise<any> {
       }
     }
 
-    // 第一步：尝试获取注册局基本信息（用于确定注册商）
-    let registryCommand = `whois "${query}"`
-    
-    // 对于其他ccTLD，尝试使用专用WHOIS服务器
-    if (isCountryTLD && cctldInfo?.whoisServer) {
-      registryCommand = `whois -h ${cctldInfo.whoisServer} "${query}"`
-    }
+    // 第一步：尝试获取注册局基本信息（优先选择专用WHOIS服务器）
+    const preferredServer = isCountryTLD ? (cctldInfo?.whoisServer || null) : (getDomainWhoisServer(query) || null)
+    let registryCommand = preferredServer ? `whois -h ${preferredServer} "${query}"` : `whois "${query}"`
 
     const { stdout: registryStdout } = await execAsync(registryCommand, {
       timeout: 15000,
