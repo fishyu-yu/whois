@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
-import { HistoryPanel } from "@/components/history-panel"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { History, Github, X } from "lucide-react"
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Github } from "lucide-react"
 
 interface WhoisData {
   query: string
@@ -19,20 +18,7 @@ interface WhoisData {
 export default function Home() {
   const [currentResult, setCurrentResult] = useState<WhoisData | null>(null)
   const [loading, setLoading] = useState(false)
-  const [history, setHistory] = useState<WhoisData[]>([])
-  const [showHistory, setShowHistory] = useState(false)
 
-  // 从本地存储加载历史记录
-  useEffect(() => {
-    const savedHistory = localStorage.getItem("whois-history")
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory))
-      } catch (error) {
-        console.error("加载历史记录失败:", error)
-      }
-    }
-  }, [])
   const handleQuery = async (query: string, type: string, dataSource?: string) => {
     setLoading(true)
     try {
@@ -57,13 +43,6 @@ export default function Home() {
       }
 
       setCurrentResult(whoisData)
-      
-      // 添加到历史记录
-      const newHistory = [whoisData, ...history.slice(0, 9)] // 保留最近10条记录
-      setHistory(newHistory)
-      
-      // 保存到本地存储
-      localStorage.setItem("whois-history", JSON.stringify(newHistory))
     } catch (error) {
       console.error("查询错误:", error)
       setCurrentResult({
@@ -75,22 +54,6 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleSelectHistory = (data: WhoisData) => {
-    setCurrentResult(data)
-    setShowHistory(false)
-  }
-
-  const handleClearHistory = () => {
-    setHistory([])
-    localStorage.removeItem("whois-history")
-  }
-
-  const handleDeleteHistoryItem = (index: number) => {
-    const newHistory = history.filter((_, i) => i !== index)
-    setHistory(newHistory)
-    localStorage.setItem("whois-history", JSON.stringify(newHistory))
   }
 
   const handleExport = (data: WhoisData) => {
@@ -137,8 +100,6 @@ export default function Home() {
     }
   }
 
-
-
   return (
     <div className="min-h-screen bg-background">
       {/* 头部导航 */}
@@ -148,14 +109,6 @@ export default function Home() {
             <h1 className="text-2xl font-bold">Whois 查询工具</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowHistory(!showHistory)}
-            >
-              {showHistory ? <X className="h-4 w-4 mr-1" /> : <History className="h-4 w-4 mr-1" />}
-              {showHistory ? "关闭历史" : `历史记录 (${history.length})`}
-            </Button>
             <Button variant="outline" size="sm" asChild>
               <a href="https://github.com" target="_blank" rel="noopener noreferrer">
                 <Github className="h-4 w-4 mr-1" />
@@ -169,8 +122,8 @@ export default function Home() {
 
       {/* 主要内容 */}
       <main className="container mx-auto px-4 py-8 space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+        <div className="grid grid-cols-1 gap-8">
+          <div className="space-y-8">
             {/* 查询表单 */}
             <WhoisForm onSubmit={handleQuery} loading={loading} />
 
@@ -182,7 +135,7 @@ export default function Home() {
             />
 
             {/* 功能介绍 */}
-            {!currentResult && !showHistory && (
+            {!currentResult && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
@@ -210,14 +163,6 @@ export default function Home() {
                 </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">📚 历史记录</CardTitle>
-                    <CardDescription>
-                      本地存储查询历史，支持快速检索和重复查询
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
                     <CardTitle className="text-lg">📦 结果导出</CardTitle>
                     <CardDescription>
                       支持查询结果导出和分享，便于保存和传播
@@ -235,18 +180,6 @@ export default function Home() {
               </div>
             )}
           </div>
-
-          {/* 历史记录面板 */}
-          {showHistory && (
-            <div className="lg:col-span-1">
-              <HistoryPanel
-                history={history}
-                onSelectHistory={handleSelectHistory}
-                onClearHistory={handleClearHistory}
-                onDeleteItem={handleDeleteHistoryItem}
-              />
-            </div>
-          )}
         </div>
       </main>
 

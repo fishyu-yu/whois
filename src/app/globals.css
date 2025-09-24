@@ -76,6 +76,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --transition-duration: 280ms;
+  --transition-duration-fast: 180ms;
+  --transition-ease: linear;
 }
 
 .dark {
@@ -187,4 +190,32 @@
   .button-group > * {
     width: 100%;
   }
+}
+
+/* 线性柔和进入动画 */
+@keyframes softEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-soft-enter {
+  animation: softEnter var(--transition-duration) var(--transition-ease) both;
+}
+
+/* 统一过渡基类（颜色、阴影等） */
+.transition-base {
+  transition-duration: var(--transition-duration);
+  transition-timing-function: var(--transition-ease);
+}
+
+/* 降低动效（无障碍与性能） */
+@media (prefers-reduced-motion: reduce) {
+  .animate-soft-enter { animation: none; }
+  .transition-base { transition: none; }
 }
