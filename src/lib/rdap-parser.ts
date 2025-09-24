@@ -29,10 +29,18 @@ export interface ParsedRDAPData {
   admin_organization?: string;
   admin_email?: string;
   admin_phone?: string;
+  admin_country?: string;
   tech_name?: string;
   tech_organization?: string;
   tech_email?: string;
   tech_phone?: string;
+  tech_country?: string;
+  // 新增：账单联系人
+  billing_name?: string;
+  billing_organization?: string;
+  billing_email?: string;
+  billing_phone?: string;
+  billing_country?: string;
 }
 
 /**
@@ -157,8 +165,6 @@ export function parseRDAPResponse(rdapData: RDAPResponse): ParsedRDAPData {
         const registrarInfo = parseVCard(registrarEntity.vcardArray);
         result.registrar = registrarInfo.name || registrarInfo.organization;
       }
-      
-      // 查找注册商的WHOIS服务器
       if (registrarEntity.port43) {
         result.registrar_whois_server = registrarEntity.port43;
       }
@@ -183,6 +189,8 @@ export function parseRDAPResponse(rdapData: RDAPResponse): ParsedRDAPData {
       result.admin_organization = adminInfo.organization;
       result.admin_email = adminInfo.email;
       result.admin_phone = adminInfo.phone;
+      // 可选：国家
+      if (adminInfo.country) result.admin_country = adminInfo.country;
     }
 
     // 查找技术联系人
@@ -193,6 +201,19 @@ export function parseRDAPResponse(rdapData: RDAPResponse): ParsedRDAPData {
       result.tech_organization = techInfo.organization;
       result.tech_email = techInfo.email;
       result.tech_phone = techInfo.phone;
+      // 可选：国家
+      if (techInfo.country) result.tech_country = techInfo.country;
+    }
+
+    // 新增：查找账单联系人
+    const billingEntity = findEntityByRole(rdapData.entities, 'billing');
+    if (billingEntity && billingEntity.vcardArray) {
+      const billingInfo = parseVCard(billingEntity.vcardArray);
+      result.billing_name = billingInfo.name;
+      result.billing_organization = billingInfo.organization;
+      result.billing_email = billingInfo.email;
+      result.billing_phone = billingInfo.phone;
+      result.billing_country = billingInfo.country;
     }
   }
 
@@ -253,17 +274,60 @@ export function rdapToWhoisText(parsedData: ParsedRDAPData): string {
     lines.push(`DNSSEC: ${parsedData.dnssec}`);
   }
 
-  // 添加联系人信息
+  // 添加联系人信息（注册人）
   if (parsedData.registrant_name) {
     lines.push(`Registrant Name: ${parsedData.registrant_name}`);
   }
-
   if (parsedData.registrant_organization) {
     lines.push(`Registrant Organization: ${parsedData.registrant_organization}`);
   }
-
   if (parsedData.registrant_email) {
     lines.push(`Registrant Email: ${parsedData.registrant_email}`);
+  }
+  if (parsedData.registrant_phone) {
+    lines.push(`Registrant Phone: ${parsedData.registrant_phone}`);
+  }
+
+  // 行政联系人
+  if (parsedData.admin_name) {
+    lines.push(`Admin Name: ${parsedData.admin_name}`);
+  }
+  if (parsedData.admin_organization) {
+    lines.push(`Admin Organization: ${parsedData.admin_organization}`);
+  }
+  if (parsedData.admin_email) {
+    lines.push(`Admin Email: ${parsedData.admin_email}`);
+  }
+  if (parsedData.admin_phone) {
+    lines.push(`Admin Phone: ${parsedData.admin_phone}`);
+  }
+
+  // 技术联系人
+  if (parsedData.tech_name) {
+    lines.push(`Tech Name: ${parsedData.tech_name}`);
+  }
+  if (parsedData.tech_organization) {
+    lines.push(`Tech Organization: ${parsedData.tech_organization}`);
+  }
+  if (parsedData.tech_email) {
+    lines.push(`Tech Email: ${parsedData.tech_email}`);
+  }
+  if (parsedData.tech_phone) {
+    lines.push(`Tech Phone: ${parsedData.tech_phone}`);
+  }
+
+  // 账单联系人
+  if (parsedData.billing_name) {
+    lines.push(`Billing Name: ${parsedData.billing_name}`);
+  }
+  if (parsedData.billing_organization) {
+    lines.push(`Billing Organization: ${parsedData.billing_organization}`);
+  }
+  if (parsedData.billing_email) {
+    lines.push(`Billing Email: ${parsedData.billing_email}`);
+  }
+  if (parsedData.billing_phone) {
+    lines.push(`Billing Phone: ${parsedData.billing_phone}`);
   }
 
   return lines.join('\n');

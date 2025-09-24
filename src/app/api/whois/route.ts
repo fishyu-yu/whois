@@ -9,6 +9,7 @@ import { parseRDAPResponse, rdapToWhoisText } from "@/lib/rdap-parser"
 
 const execAsync = promisify(exec)
 
+
 // 简单的内存缓存
 const cache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5分钟缓存
@@ -126,7 +127,9 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
               type,
               timestamp: new Date().toISOString(),
               dataSource: actualDataSource,
-              rdapSource: rdapData.rdapSource
+              rdapSource: rdapData.rdapSource,
+              rdapRegistryRaw: (rdapData as any).registryRaw || null,
+              rdapRegistrarRaw: (rdapData as any).registrarRaw || null
             }
           }
         } catch (rdapError) {

@@ -263,6 +263,82 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     </div>
                   ) : null}
                 </div>
+
+                {/* 联系人信息 */}
+                {(() => {
+                  const contacts = {
+                    registrant: {
+                      name: parsed?.registrant_name,
+                      organization: parsed?.registrant_organization,
+                      email: parsed?.registrant_email,
+                      phone: parsed?.registrant_phone,
+                      country: parsed?.registrant_country,
+                    },
+                    administrative: {
+                      name: parsed?.admin_name,
+                      organization: parsed?.admin_organization,
+                      email: parsed?.admin_email,
+                      phone: parsed?.admin_phone,
+                      country: (parsed as any)?.admin_country,
+                    },
+                    technical: {
+                      name: parsed?.tech_name,
+                      organization: parsed?.tech_organization,
+                      email: parsed?.tech_email,
+                      phone: parsed?.tech_phone,
+                      country: (parsed as any)?.tech_country,
+                    },
+                    billing: {
+                      name: parsed?.billing_name,
+                      organization: parsed?.billing_organization,
+                      email: parsed?.billing_email,
+                      phone: parsed?.billing_phone,
+                      country: parsed?.billing_country,
+                    },
+                  }
+                  const hasAny = Object.values(contacts).some((c: any) => c && (c.name || c.organization || c.email || c.phone || c.country))
+                  if (!hasAny) return null
+
+                  const renderContactBlock = (title: string, c: any) => {
+                    const fields = [
+                      { label: '姓名', value: c?.name },
+                      { label: '组织', value: c?.organization },
+                      { label: '邮箱', value: c?.email },
+                      { label: '电话', value: c?.phone },
+                      { label: '国家/地区', value: c?.country },
+                    ].filter(f => f.value)
+                    if (fields.length === 0) return null
+                    return (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground">{title}</label>
+                        <div className="space-y-2">
+                          {fields.map((f, idx) => (
+                            <p key={idx} className="text-sm bg-muted p-2 rounded">
+                              <span className="font-medium mr-2">{f.label}</span>
+                              {f.value}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        联系人信息
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {renderContactBlock('注册人', contacts.registrant)}
+                        {renderContactBlock('行政联系人', contacts.administrative)}
+                        {renderContactBlock('技术联系人', contacts.technical)}
+                        {renderContactBlock('账单联系人', contacts.billing)}
+                      </div>
+                    </div>
+                  )
+                })()}
+
               </div>
             )}
 
