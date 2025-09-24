@@ -5,7 +5,7 @@ import { WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Github } from "lucide-react"
 
 interface WhoisData {
@@ -122,22 +122,20 @@ export default function Home() {
 
       {/* 主要内容（垂直+水平居中） */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-3xl mx-auto space-y-8">
-          {/* 查询表单 */}
-          <div className="mx-auto w-full">
-            <WhoisForm onSubmit={handleQuery} loading={loading} />
-          </div>
+        <div className="w-full max-w-2xl mx-auto space-y-8">
+          {/* 中心聚焦卡片：表单 + 结果 */}
+          <Card className="w-full shadow-md rounded-xl">
+            <CardContent className="space-y-6">
+              <WhoisForm onSubmit={handleQuery} loading={loading} />
+              <WhoisResult
+                data={currentResult}
+                onExport={() => currentResult && handleExport(currentResult)}
+                onShare={() => currentResult && handleShare(currentResult)}
+              />
+            </CardContent>
+          </Card>
 
-          {/* 查询结果 */}
-          <div className="mx-auto w-full">
-            <WhoisResult
-              data={currentResult}
-              onExport={() => currentResult && handleExport(currentResult)}
-              onShare={() => currentResult && handleShare(currentResult)}
-            />
-          </div>
-
-          {/* 功能介绍（对称分布、文案居中） */}
+          {/* 功能介绍（对称分布、文案居中；桌面端固定两列） */}
           {!currentResult && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
