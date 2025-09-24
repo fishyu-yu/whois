@@ -113,109 +113,65 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* 头部导航（整体居中、对称） */}
-      <header className="border-b">
+      <header className="border-b safe-top">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col items-center gap-3">
-            <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
-            <div className="flex items-center justify-center gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
-                  <Github className="h-4 w-4 mr-1" />
-                  GitHub
-                </a>
-              </Button>
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </header>
+           <div className="flex flex-col items-center gap-3">
+             <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
+             <div className="flex items-center justify-center gap-2">
+               <Button variant="outline" size="sm" asChild>
+                 <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
+                   <Github className="h-4 w-4 mr-1" />
+                   GitHub
+                 </a>
+               </Button>
+               <ThemeToggle />
+             </div>
+           </div>
+         </div>
+       </header>
 
-      {/* 主要内容（垂直+水平居中） */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-2xl mx-auto space-y-8">
-          {/* 中心聚焦卡片：表单 + 结果 */}
-          <Card className="w-full shadow-md rounded-xl">
-            <CardContent className="space-y-6">
-              <WhoisForm onSubmit={handleQuery} loading={loading} />
-              <WhoisResult
-                data={currentResult}
-                onExport={() => currentResult && handleExport(currentResult)}
-                onShare={() => currentResult && handleShare(currentResult)}
-              />
-            </CardContent>
-          </Card>
+       {/* 主要内容（垂直+水平居中） */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8 safe-bottom">
+         <div className="w-full max-w-2xl mx-auto space-y-8">
+           {/* 中心聚焦卡片：表单 + 结果 */}
+           <Card className="w-full shadow-md rounded-xl">
+             <CardContent className="space-y-6">
+               <WhoisForm onSubmit={handleQuery} loading={loading} />
+               <WhoisResult
+                 data={currentResult}
+                 onExport={() => currentResult && handleExport(currentResult)}
+                 onShare={() => currentResult && handleShare(currentResult)}
+               />
+             </CardContent>
+           </Card>
 
-          {/* 功能介绍（对称分布、文案居中；桌面端固定两列） */}
-          {!currentResult && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader className="items-center text-center">
-                  <CardTitle className="text-lg">🌍 域名查询</CardTitle>
-                  <CardDescription>
-                    专业的域名信息查询服务，支持各种顶级域名
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="items-center text-center">
-                  <CardTitle className="text-lg">📱 响应式设计</CardTitle>
-                  <CardDescription>
-                    完美适配移动端、平板和桌面设备，支持PWA安装
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="items-center text-center">
-                  <CardTitle className="text-lg">🌈 主题切换</CardTitle>
-                  <CardDescription>
-                    内置亮/暗色主题，自动匹配系统主题偏好
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="items-center text-center">
-                  <CardTitle className="text-lg">📦 结果导出</CardTitle>
-                  <CardDescription>
-                    支持查询结果导出和分享，便于保存和传播
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="items-center text-center">
-                  <CardTitle className="text-lg">🚀 高性能</CardTitle>
-                  <CardDescription>
-                    基于Next.js构建，支持无服务器部署和缓存优化
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          )}
-        </div>
-      </main>
+          {/* 已移除功能介绍区块，保持页面简洁聚焦 */}
+         </div>
+       </main>
 
-      {/* 页脚 */}
-      <footer className="border-t mt-8">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground space-y-3">
-          <div className="space-y-1">
-            <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
-            <a 
-              href="https://github.com/fishyu-yu/whois" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              <Github className="h-4 w-4" />
-              GitHub 项目
-            </a>
-            <span className="hidden sm:inline">•</span>
-            <span>基于 Next.js 和 Shadcn UI 构建</span>
-            <span className="hidden sm:inline">•</span>
-            <span>Licensed under AGPL-3.0</span>
-          </div>
-        </div>
-      </footer>
+       {/* 页脚 */}
+       <footer className="border-t mt-8">
+        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground space-y-3 safe-bottom">
+           <div className="space-y-1">
+             <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
+           </div>
+           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+             <a 
+               href="https://github.com/fishyu-yu/whois" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               className="flex items-center gap-1 hover:text-foreground transition-colors"
+             >
+               <Github className="h-4 w-4" />
+               GitHub 项目
+             </a>
+             <span className="hidden sm:inline">•</span>
+             <span>基于 Next.js 和 Shadcn UI 构建</span>
+             <span className="hidden sm:inline">•</span>
+             <span>Licensed under AGPL-3.0</span>
+           </div>
+         </div>
+       </footer>
     </div>
   )
 }

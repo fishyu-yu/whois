@@ -3,6 +3,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Apple-inspired primary and ring colors (System Blue) */
+:root {
+  --primary: 211 100% 52%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 211 100% 52%;
+  --radius-sm: 0.5rem; /* 8px */
+  --radius-md: 0.625rem; /* 10px */
+  --radius-lg: 1rem; /* 16px */
+}
+
+.dark {
+  --primary: 211 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 211 100% 60%;
+}
+
+html, body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -219,3 +240,46 @@
   .animate-soft-enter { animation: none; }
   .transition-base { transition: none; }
 }
+
+/* Subtle, consistent micro-interactions and rounded corners */
+[data-slot="button"] {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  will-change: transform;
+  transition: transform 150ms ease, box-shadow 200ms ease, background-color var(--transition-duration) var(--transition-ease), color var(--transition-duration) var(--transition-ease);
+}
+[data-slot="button"]:hover { transform: translateY(-1px); }
+[data-slot="button"]:active { transform: translateY(0); }
+[data-slot="button"]:focus-visible { outline: none; box-shadow: 0 0 0 4px hsl(var(--ring) / 0.22); }
+
+[data-slot="card"] {
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  transition: transform 200ms ease, box-shadow 250ms ease, background-color var(--transition-duration) var(--transition-ease);
+}
+[data-slot="card"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+[data-slot="card-header"], [data-slot="card-content"], [data-slot="card-footer"] {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+[data-slot="card-title"] { font-size: 1.0625rem; letter-spacing: -0.01em; }
+
+[data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"] {
+  border-radius: var(--radius-md);
+  height: 2.5rem; /* 40px for clearer touch target */
+  box-shadow: none;
+}
+
+/* 移动端安全区工具类：让顶部/底部在刘海、Home 指示条下也保持舒适留白 */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+/* Prefer subtle scrollbars and transitions already defined below */
