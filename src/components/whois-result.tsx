@@ -6,6 +6,43 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Copy, Download, Share2, Clock, Globe, Server, Flag, User, ExternalLink } from "lucide-react"
 import { formatDomainDisplay } from "@/lib/domain-utils"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
+// RDAP/EPP 域名状态字典（中文说明 + 严重程度用于排序）
+const STATUS_INFO: Record<string, { label: string; severity: number }> = {
+  ok: { label: "正常", severity: 0 },
+  active: { label: "活跃", severity: 0 },
+  clientHold: { label: "客户端暂停解析", severity: 3 },
+  serverHold: { label: "服务端暂停解析", severity: 3 },
+  redemptionPeriod: { label: "赎回期", severity: 3 },
+  pendingDelete: { label: "等待删除", severity: 3 },
+  inactive: { label: "未激活", severity: 2 },
+  clientDeleteProhibited: { label: "客户端禁止删除", severity: 1 },
+  serverDeleteProhibited: { label: "服务端禁止删除", severity: 1 },
+  clientUpdateProhibited: { label: "客户端禁止更新", severity: 1 },
+  serverUpdateProhibited: { label: "服务端禁止更新", severity: 1 },
+  clientRenewProhibited: { label: "客户端禁止续费", severity: 1 },
+  serverRenewProhibited: { label: "服务端禁止续费", severity: 1 },
+  clientTransferProhibited: { label: "客户端禁止转移", severity: 2 },
+  serverTransferProhibited: { label: "服务端禁止转移", severity: 2 },
+  pendingCreate: { label: "等待创建", severity: 1 },
+  pendingRenew: { label: "等待续费", severity: 1 },
+  pendingTransfer: { label: "等待转移", severity: 1 },
+  pendingUpdate: { label: "等待更新", severity: 1 },
+  pendingRestore: { label: "等待恢复", severity: 2 },
+  autoRenewPeriod: { label: "自动续费宽限期", severity: 0 },
+  renewPeriod: { label: "续费宽限期", severity: 0 },
+  addPeriod: { label: "新增宽限期", severity: 0 },
+  transferPeriod: { label: "转移宽限期", severity: 0 },
+  locked: { label: "锁定", severity: 2 },
+}
+
+const getStatusInfo = (code: string) => {
+  const normalizedCode = (code || "").trim()
+  const info = STATUS_INFO[normalizedCode]
+  if (info) return { code: normalizedCode, ...info }
+  return { code: normalizedCode, label: "未知状态", severity: 1 }
+}
 
 interface WhoisResultProps {
   data: any
@@ -14,42 +51,51 @@ interface WhoisResultProps {
 }
 
 export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
-  if (!data || !data.result) return null
-
-  // 可能的形态：
-  // 1) 扁平：{ raw, parsed, dataSource, ... }
-  // 2) 包在 data 内：{ data: { raw, parsed } }
-  // 3) 模拟数据：{ dataSource: 'mock', result: { raw, parsed } }
-  const result = data.result
-
-  // 先定位有效的 raw/parsed 容器
-  const effective = (result && (result.raw || result.parsed))
-    ? result
-    : (result?.result && (result.result.raw || result.result.parsed))
-      ? result.result
-      : (result?.data && (result.data.raw || result.data.parsed))
-        ? result.data
-        : null
-
-  const parsed = effective?.parsed || null
-  const raw = effective?.raw || ""
-
-  // 统一字段名（兼容 snake_case 与 camelCase，以及 .cn 模拟字段）
-  const normalized = {
-    domain: parsed?.domain || parsed?.domain_name,
-    registrar: parsed?.registrar || parsed?.sponsoring_registrar,
-    registrationDate: parsed?.registrationDate || parsed?.creation_date || parsed?.registration_time,
-    expirationDate: parsed?.expirationDate || parsed?.registry_expiry_date || parsed?.expiration_time,
-    nameServers: (() => {
-      const ns = parsed?.nameServers || parsed?.name_server || parsed?.name_servers
-      if (!ns) return []
-      return Array.isArray(ns) ? ns : [ns]
-    })(),
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
+   if (!data || !data.result) return null
+ 
+   // 可能的形态：
+   // 1) 扁平：{ raw, parsed, dataSource, ... }
+   // 2) 包在 data 内：{ data: { raw, parsed } }
+   // 3) 模拟数据：{ dataSource: 'mock', result: { raw, parsed } }
+   const result = data.result
+ 
+   // 先定位有效的 raw/parsed 容器
+   const effective = (result && (result.raw || result.parsed))
+     ? result
+     : (result?.result && (result.result.raw || result.result.parsed))
+       ? result.result
+       : (result?.data && (result.data.raw || result.data.parsed))
+         ? result.data
+         : null
+ 
+   const parsed = effective?.parsed || null
+   const raw = effective?.raw || ""
+ 
+   // 统一字段名（兼容 snake_case 与 camelCase，以及 .cn 模拟字段）
+   const normalized = {
+     domain: parsed?.domain || parsed?.domain_name,
+     registrar: parsed?.registrar || parsed?.sponsoring_registrar,
+     registrationDate: parsed?.registrationDate || parsed?.creation_date || parsed?.registration_time,
+     expirationDate: parsed?.expirationDate || parsed?.registry_expiry_date || parsed?.expiration_time,
+     nameServers: (() => {
+       const ns = parsed?.nameServers || parsed?.name_server || parsed?.name_servers
+       if (!ns) return []
+       return Array.isArray(ns) ? ns : [ns]
+     })(),
+     domainStatus: (() => {
+       const st = parsed?.domainStatus || parsed?.domain_status || parsed?.status
+       if (!st) return []
+       return Array.isArray(st) ? st : [st]
+     })()
+   }
+ 
+   const sortedStatuses = (normalized.domainStatus || [])
+     .map((s: string) => getStatusInfo(s))
+     .sort((a, b) => b.severity - a.severity || a.code.localeCompare(b.code))
+ 
+   const copyToClipboard = (text: string) => {
+     navigator.clipboard.writeText(text)
+   }
 
   // 来源徽章
   const resolveDataSource = () => {
@@ -140,7 +186,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
         )}
 
         {/* 成功结果 */}
-        {!result.error && (parsed || raw) && (
+        {!result.error && (parsed || raw) ? (
           <div className="space-y-4">
             {/* 解析后的数据 */}
             {parsed && (
@@ -171,29 +217,73 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                       <p className="text-sm bg-muted p-2 rounded">{normalized.registrationDate}</p>
                     </div>
                   )}
-                  
+
                   {normalized.expirationDate && (
                     <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">过期日期</label>
+                      <label className="text-sm font-medium text-muted-foreground">到期日期</label>
                       <p className="text-sm bg-muted p-2 rounded">{normalized.expirationDate}</p>
                     </div>
                   )}
-                  
+
                   {normalized.nameServers && normalized.nameServers.length > 0 && (
-                    <div className="space-y-1 md:col-span-2">
+                    <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">名称服务器</label>
-                      <div className="bg-muted p-2 rounded">
-                        {normalized.nameServers.map((ns: string, index: number) => (
-                          <p key={index} className="font-mono text-sm">{ns}</p>
+                      <div className="space-y-2">
+                        {normalized.nameServers.map((ns: string, idx: number) => (
+                          <p key={idx} className="text-sm bg-muted p-2 rounded">{ns}</p>
                         ))}
                       </div>
                     </div>
                   )}
+
+                  {sortedStatuses && sortedStatuses.length > 0 ? (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-muted-foreground">域名状态</label>
+                      <div className="flex flex-wrap gap-2">
+                        <TooltipProvider>
+                          {sortedStatuses.map((s, idx) => (
+                            <Tooltip key={`${s.code}-${idx}`}>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="text-xs">
+                                  {s.code}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{s.label}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             )}
 
             <Separator />
+
+            {sortedStatuses && sortedStatuses.length > 0 ? (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">状态概览</h3>
+                <div className="flex flex-wrap gap-2">
+                  <TooltipProvider>
+                    {sortedStatuses.map((s, idx) => (
+                      <Tooltip key={`overview-${s.code}-${idx}`}>
+                        <TooltipTrigger asChild>
+                          <Badge variant="secondary" className="text-xs">
+                            {s.code}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{s.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </TooltipProvider>
+                </div>
+              </div>
+            ) : null}
 
             {/* 原始数据 */}
             {raw && (
@@ -215,9 +305,8 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
               </div>
             )}
           </div>
-        )}
+        ) : null}
 
-        {/* 操作按钮 */}
         <div className="flex items-center gap-2 pt-4 border-t">
           <Button variant="outline" size="sm" onClick={onExport}>
             <Download className="h-4 w-4 mr-1" />
