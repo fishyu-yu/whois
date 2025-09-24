@@ -24,14 +24,24 @@ export default function Home() {
     try {
       const response = await fetch("/api/whois", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query, type, dataSource }),
-      })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, type, dataSource: "rdap" }),
+      });
 
       if (!response.ok) {
-        throw new Error("查询失败")
+        let message = "查询失败"
+        try {
+          const err = await response.json()
+          message = err?.error || err?.details || message
+        } catch {}
+
+        setCurrentResult({
+          query,
+          type,
+          result: { error: message },
+          timestamp: new Date().toISOString(),
+        })
+        return
       }
 
       const result = await response.json()

@@ -45,7 +45,7 @@ function validateInput(query: string, type: string): { valid: boolean; error?: s
 
 // 执行whois查询
 async function performWhoisQuery(query: string, type: string, dataSource?: string): Promise<any> {
-  const cacheKey = `${type}:${query}:${dataSource || 'auto'}`
+  const cacheKey = `${type}:${query}:${dataSource || 'rdap'}`
   
   // 检查缓存
   const cached = cache.get(cacheKey)
@@ -59,8 +59,8 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
     // 对于域名查询，根据指定的数据源进行查询
     if (type === "domain") {
       // 根据数据源选择查询方式
-      if (dataSource === "rdap") {
-        // 强制使用RDAP：直接尝试RDAP查询，失败则返回明确错误
+      if (!dataSource || dataSource === "rdap") {
+        // 默认使用 RDAP，失败或无结果则回退到 WHOIS
         try {
           const rdapData = await queryDomainRDAP(query)
           if (rdapData) {
@@ -78,7 +78,20 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
             }
           }
         } catch (e: any) {
-          throw new Error(e?.message || "该域名不支持RDAP查询或查询失败")
+          console.warn(`RDAP 查询失败，回退到 WHOIS: ${e?.message || e}`)
+        }
+
+        // 如果 RDAP 未得到结果，则回退到 WHOIS
+        if (!result) {
+          try {
+            result = await performDomainWhoisWithPriority(query)
+          } catch (fallbackErr) {
+            console.warn(`注册局/注册商 WHOIS 回退失败，改用标准 WHOIS: ${fallbackErr}`)
+          }
+
+          if (!result) {
+            result = await performStandardWhoisQuery(query, type)
+          }
         }
       } else if (dataSource === "whois") {
         // 强制使用传统WHOIS
