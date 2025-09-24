@@ -119,7 +119,7 @@ export default function Home() {
             <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
             <div className="flex items-center justify-center gap-2">
               <Button variant="outline" size="sm" asChild>
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
                   <Github className="h-4 w-4 mr-1" />
                   GitHub
                 </a>
@@ -195,8 +195,25 @@ export default function Home() {
 
       {/* 页脚 */}
       <footer className="border-t mt-8">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>© 2024 Whois 查询工具. 基于 Next.js 和 Shadcn UI 构建.</p>
+        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground space-y-3">
+          <div className="space-y-1">
+            <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+            <a 
+              href="https://github.com/fishyu-yu/whois" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+            >
+              <Github className="h-4 w-4" />
+              GitHub 项目
+            </a>
+            <span className="hidden sm:inline">•</span>
+            <span>基于 Next.js 和 Shadcn UI 构建</span>
+            <span className="hidden sm:inline">•</span>
+            <span>Licensed under AGPL-3.0</span>
+          </div>
         </div>
       </footer>
     </div>
