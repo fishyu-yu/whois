@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { exec } from "child_process"
 import { promisify } from "util"
+import net from "net"
 import { validateDomain, formatDomainDisplay, DomainValidationResult, getDomainWhoisServer } from "@/lib/domain-utils"
 import { getCCTLDInfo, isCCTLD } from "@/lib/cctld-database"
 import { queryDomainRDAP, isRDAPSupported } from "@/lib/rdap-client"
@@ -96,34 +97,25 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
         }
       } else {
         // 自动选择 (默认行为)
-        // 首先尝试RDAP查询
-        if (isRDAPSupported(query)) {
-          try {
-            const rdapData = await queryDomainRDAP(query)
-            if (rdapData) {
-              const parsedData = parseRDAPResponse(rdapData)
-              const whoisText = rdapToWhoisText(parsedData)
-              
-              // 根据RDAP数据源类型设置dataSource
-              const actualDataSource = rdapData.rdapSource === 'registrar' ? 'rdap-registrar' : 'rdap-registry'
-              
-              result = {
-                raw: whoisText,
-                parsed: parsedData,
-                query,
-                type,
-                timestamp: new Date().toISOString(),
-                dataSource: actualDataSource,
-                rdapSource: rdapData.rdapSource
-              }
-            }
-          } catch (rdapError) {
-            console.error(`RDAP查询失败，回退到WHOIS: ${rdapError}`)
-            // 如果是强制RDAP模式，直接抛出错误
-            if (dataSource === "rdap") {
-              throw new Error(`RDAP查询失败: ${rdapError instanceof Error ? rdapError.message : String(rdapError)}`)
+        // 直接尝试RDAP查询（支持动态引导），失败或不支持则回退到WHOIS
+        try {
+          const rdapData = await queryDomainRDAP(query)
+          if (rdapData) {
+            const parsedData = parseRDAPResponse(rdapData)
+            const whoisText = rdapToWhoisText(parsedData)
+            const actualDataSource = rdapData.rdapSource === 'registrar' ? 'rdap-registrar' : 'rdap-registry'
+            result = {
+              raw: whoisText,
+              parsed: parsedData,
+              query,
+              type,
+              timestamp: new Date().toISOString(),
+              dataSource: actualDataSource,
+              rdapSource: rdapData.rdapSource
             }
           }
+        } catch (rdapError) {
+          console.error(`RDAP查询失败，回退到WHOIS: ${rdapError}`)
         }
         
         // 如果RDAP失败或不支持，使用传统WHOIS
@@ -155,105 +147,75 @@ async function performDomainWhoisWithPriority(query: string): Promise<any> {
   let registryResult: any = null
   let finalResult: any = null
 
-  // 验证域名并获取相关信息
   const domainValidation = validateDomain(query)
   const isCountryTLD = isCCTLD(query)
   const cctldInfo = isCountryTLD ? getCCTLDInfo(query) : null
 
   try {
-    // 对于.cn域名，直接返回模拟数据，因为Windows环境下WHOIS命令可能不可用
-    if (isCountryTLD && query.endsWith('.cn')) {
-      const mockData = getCNDomainMockData(query)
-      return {
-        ...mockData,
-        domainInfo: {
-          validation: domainValidation,
-          isCountryTLD,
-          cctldInfo
-        }
-      }
-    }
-
-    // 第一步：尝试获取注册局基本信息（优先选择专用WHOIS服务器）
+    // 第一步：尝试获取注册局基本信息（优先选择专用WHOIS服务器；ccTLD 走 TCP 43）
     const preferredServer = isCountryTLD ? (cctldInfo?.whoisServer || null) : (getDomainWhoisServer(query) || null)
-    let registryCommand = preferredServer ? `whois -h ${preferredServer} "${query}"` : `whois "${query}"`
-
-    const { stdout: registryStdout } = await execAsync(registryCommand, {
-      timeout: 15000,
-      maxBuffer: 1024 * 1024
-    })
+    let registryStdout = ''
+    if (preferredServer) {
+      try {
+        registryStdout = await tcpWhoisQuery(preferredServer, query)
+      } catch (tcpErr) {
+        console.warn(`TCP WHOIS 注册局查询失败，回退系统whois: ${tcpErr}`)
+        const { stdout } = await execAsync(`whois -h ${preferredServer} "${query}"`, { timeout: 15000, maxBuffer: 1024 * 1024 })
+        registryStdout = stdout
+      }
+    } else {
+      const { stdout } = await execAsync(`whois "${query}"`, { timeout: 15000, maxBuffer: 1024 * 1024 })
+      registryStdout = stdout
+    }
 
     registryResult = {
       raw: registryStdout,
       parsed: parseWhoisResult(registryStdout, "domain"),
       source: "registry",
-      domainInfo: {
-        validation: domainValidation,
-        isCountryTLD,
-        cctldInfo
-      }
+      domainInfo: { validation: domainValidation, isCountryTLD, cctldInfo }
     }
 
-    // 第二步：尝试从注册商获取详细信息
+    // 第二步：尝试从注册商获取详细信息（优先 TCP 43）
     const registrarServer = extractRegistrarWhoisServer(registryStdout)
     if (registrarServer) {
       try {
-        const registrarCommand = `whois -h ${registrarServer} "${query}"`
-        const { stdout: registrarStdout } = await execAsync(registrarCommand, {
-          timeout: 15000,
-          maxBuffer: 1024 * 1024
-        })
-
+        const registrarStdout = await tcpWhoisQuery(registrarServer, query)
         registrarResult = {
           raw: registrarStdout,
           parsed: parseWhoisResult(registrarStdout, "domain"),
           source: "registrar",
-          domainInfo: {
-            validation: domainValidation,
-            isCountryTLD,
-            cctldInfo
-          }
+          domainInfo: { validation: domainValidation, isCountryTLD, cctldInfo }
         }
-      } catch (registrarError) {
-        console.warn(`注册商查询失败: ${registrarError}`)
+      } catch (registrarTcpErr) {
+        console.warn(`TCP WHOIS 注册商查询失败，尝试系统whois: ${registrarTcpErr}`)
+        try {
+          const { stdout: registrarStdout } = await execAsync(`whois -h ${registrarServer} "${query}"`, { timeout: 15000, maxBuffer: 1024 * 1024 })
+          registrarResult = {
+            raw: registrarStdout,
+            parsed: parseWhoisResult(registrarStdout, "domain"),
+            source: "registrar",
+            domainInfo: { validation: domainValidation, isCountryTLD, cctldInfo }
+          }
+        } catch (registrarError) {
+          console.warn(`注册商查询失败: ${registrarError}`)
+        }
       }
     }
 
     // 第三步：决定使用哪个结果
     if (registrarResult && hasRichContactData(registrarResult.parsed)) {
-      // 注册商数据丰富，优先使用
-      finalResult = {
-        ...registrarResult,
-        query,
-        type: "domain",
-        timestamp: new Date().toISOString(),
-        dataSource: "registrar"
-      }
+      finalResult = { ...registrarResult, query, type: "domain", timestamp: new Date().toISOString(), dataSource: "registrar" }
     } else if (registryResult) {
-      // 回退到注册局数据
-      finalResult = {
-        ...registryResult,
-        query,
-        type: "domain", 
-        timestamp: new Date().toISOString(),
-        dataSource: "registry"
-      }
+      finalResult = { ...registryResult, query, type: "domain", timestamp: new Date().toISOString(), dataSource: "registry" }
     } else {
       throw new Error("无法获取域名信息")
     }
 
     return finalResult
-
   } catch (error) {
-    // 如果所有尝试都失败，使用标准查询作为最后回退
     const fallbackResult = await performStandardWhoisQuery(query, "domain")
-    // 添加域名信息到回退结果
     if (fallbackResult) {
-      fallbackResult.domainInfo = {
-        validation: domainValidation,
-        isCountryTLD,
-        cctldInfo
-      }
+      fallbackResult.domainInfo = { validation: domainValidation, isCountryTLD, cctldInfo }
     }
     return fallbackResult
   }
@@ -554,4 +516,53 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// 纯 Node TCP 43 WHOIS 查询，避免依赖系统 whois 命令
+async function tcpWhoisQuery(server: string, query: string, port = 43, timeoutMs = 12000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    const socket = new net.Socket()
+    let timedOut = false
+
+    const cleanup = () => {
+      try { socket.destroy() } catch {}
+    }
+
+    socket.setTimeout(timeoutMs)
+
+    socket.on('timeout', () => {
+      timedOut = true
+      cleanup()
+      reject(new Error(`WHOIS TCP timeout after ${timeoutMs}ms`))
+    })
+
+    socket.on('error', (err) => {
+      cleanup()
+      reject(err)
+    })
+
+    socket.connect(port, server, () => {
+      const payload = `${query}\r\n`
+      socket.write(payload, 'utf8')
+    })
+
+    socket.on('data', (data) => {
+      chunks.push(Buffer.from(data))
+    })
+
+    socket.on('end', () => {
+      if (timedOut) return
+      const raw = Buffer.concat(chunks).toString('utf8')
+      resolve(raw)
+    })
+
+    socket.on('close', () => {
+      // 如果close时还没有返回且没有timeout，尝试返回现有数据
+      if (!timedOut && chunks.length > 0) {
+        const raw = Buffer.concat(chunks).toString('utf8')
+        resolve(raw)
+      }
+    })
+  })
 }
