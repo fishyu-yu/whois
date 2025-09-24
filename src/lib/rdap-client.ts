@@ -201,13 +201,13 @@ function getRDAPServer(domain: string): string | null {
 /**
  * 执行RDAP域名查询，优先尝试注册服务机构RDAP
  */
-export async function queryDomainRDAP(domain: string, options?: { queryParams?: Record<string, string>; preferSource?: 'registrar' | 'registry' }): Promise<RDAPResponse & { rdapSource?: 'registrar' | 'registry' } | null> {
+export async function queryDomainRDAP(domain: string, options?: { queryParams?: Record<string, string>; preferSource?: 'registrar' | 'registry' }): Promise<(RDAPResponse & { rdapSource?: 'registrar' | 'registry'; registryRaw?: RDAPResponse; registrarRaw?: RDAPResponse }) | null> {
   const asciiDomain = toASCII(domain);
 
   // 缓存命中
   const cached = rdapCache.get(asciiDomain);
   if (cached && (Date.now() - cached.timestamp) < RDAP_CACHE_TTL_MS) {
-    return { ...(cached.data as RDAPResponse), rdapSource: cached.rdapSource };
+    return { ...(cached.data as RDAPResponse), rdapSource: cached.rdapSource, registryRaw: (cached as any).data.registryRaw, registrarRaw: (cached as any).data.registrarRaw } as any;
   }
 
   const servers = await getRDAPServersAsync(asciiDomain);
@@ -253,15 +253,33 @@ export async function queryDomainRDAP(domain: string, options?: { queryParams?: 
 
   // 如果指定偏好source且可用，优先返回
   const preferred = options?.preferSource;
-  let finalData: RDAPResponse & { rdapSource?: 'registrar' | 'registry' } = { ...registryData, rdapSource: 'registry' };
+  let finalData: RDAPResponse & { rdapSource?: 'registrar' | 'registry'; registryRaw?: RDAPResponse; registrarRaw?: RDAPResponse } = { ...registryData, rdapSource: 'registry', registryRaw: registryData };
 
-  // 尝试从注册局数据中提取注册商RDAP链接
-  const registrarRdapServer = extractRegistrarRdapServer(registryData);
-  if (registrarRdapServer && preferred !== 'registry') {
+  // 优先从注册局响应的顶层 links 和 registrar 实体 links 中提取注册商 RDAP 完整 URL
+  const extractedUrl = extractRegistrarRdapUrl(registryData);
+  const registrarRdapServer = extractedUrl ? null : extractRegistrarRdapServer(registryData);
+
+  if ((extractedUrl || registrarRdapServer) && preferred !== 'registry') {
     try {
       const registrarController = new AbortController();
       const registrarTimeoutId = setTimeout(() => registrarController.abort(), 10000);
-      const registrarUrl = `${registrarRdapServer}/domain/${asciiDomain}${paramsStr}`;
+
+      let registrarUrl: string;
+      if (extractedUrl) {
+        // 清理可能存在的反引号与空白
+        const clean = extractedUrl.replace(/`/g, '').trim();
+        if (/\/domain\//.test(clean)) {
+          // 链接已包含 /domain/<name>，合并查询参数
+          registrarUrl = paramsStr
+            ? (clean.includes('?') ? `${clean}&${paramsStr.slice(1)}` : `${clean}${paramsStr}`)
+            : clean;
+        } else {
+          registrarUrl = `${clean.replace(/\/$/, '')}/domain/${asciiDomain}${paramsStr}`;
+        }
+      } else {
+        registrarUrl = `${(registrarRdapServer as string).replace(/\/$/, '')}/domain/${asciiDomain}${paramsStr}`;
+      }
+
       const registrarResponse = await fetch(registrarUrl, {
         headers: {
           'Accept': 'application/rdap+json',
@@ -273,15 +291,16 @@ export async function queryDomainRDAP(domain: string, options?: { queryParams?: 
 
       if (registrarResponse.ok) {
         const registrarData = await registrarResponse.json();
-        finalData = { ...registrarData, rdapSource: 'registrar' };
+        finalData = { ...registrarData, rdapSource: 'registrar', registryRaw: registryData, registrarRaw: registrarData };
       }
     } catch {
       // 忽略注册商查询错误，保留注册局数据
+      finalData = { ...finalData, registrarRaw: finalData.registrarRaw };
     }
   }
 
-  // 写入缓存
-  rdapCache.set(asciiDomain, { data: finalData, rdapSource: finalData.rdapSource, timestamp: Date.now() });
+  // 写入缓存（包含原始两端数据）
+  rdapCache.set(asciiDomain, { data: finalData as any, rdapSource: finalData.rdapSource, timestamp: Date.now() });
 
   return finalData;
 }
@@ -314,6 +333,30 @@ function extractRegistrarRdapServer(rdapData: RDAPResponse): string | null {
   }
   
   return null
+}
+
+// 新增：从注册局响应的顶层 links 或 registrar 实体 links 中提取“注册商 RDAP 完整 URL”
+function extractRegistrarRdapUrl(rdapData: RDAPResponse): string | null {
+  // 1) 顶层 links 优先（例如 title 为 URL of Sponsoring Registrar's RDAP Record 的 related 链接）
+  const fromTop = rdapData.links?.find(link => {
+    const isRelated = link.rel === 'related';
+    const isRdap = (link.type || '').toLowerCase() === 'application/rdap+json';
+    const title = (link.title || '').toLowerCase();
+    const titleHints = title.includes('sponsoring registrar');
+    return isRelated && isRdap && (titleHints || true); // 即便无标题也尝试
+  });
+  if (fromTop?.href) {
+    return fromTop.href;
+  }
+
+  // 2) 回退到 registrar 实体的 links
+  const registrarEntity = rdapData.entities?.find(e => e.roles?.includes('registrar'));
+  const fromEntity = registrarEntity?.links?.find(link => link.rel === 'related' && (link.type || '').toLowerCase() === 'application/rdap+json');
+  if (fromEntity?.href) {
+    return fromEntity.href;
+  }
+
+  return null;
 }
 
 /**

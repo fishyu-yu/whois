@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { Copy, Download, Share2, Clock, Globe, Server, Flag, User, ExternalLink } from "lucide-react"
 import { formatDomainDisplay } from "@/lib/domain-utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useState } from "react"
 
 // RDAP/EPP 域名状态字典（中文说明 + 严重程度用于排序）
 const STATUS_INFO: Record<string, { label: string; severity: number }> = {
@@ -104,6 +105,10 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
   }
 
   const source = resolveDataSource()
+
+  // 折叠状态：默认收起
+  const [showRegistrarRaw, setShowRegistrarRaw] = useState(false)
+  const [showRegistryRaw, setShowRegistryRaw] = useState(false)
 
   const getDataSourceIcon = (dataSource: string) => {
     switch (dataSource) {
@@ -302,6 +307,71 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                 <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
                   {raw}
                 </pre>
+
+                {/* 新增：原始注册服务机构 RDAP 响应 */}
+                {(() => {
+                  // 向下兼容：字段可能在不同层级
+                  const registrarRaw = result?.rdapRegistrarRaw || effective?.rdapRegistrarRaw || result?.result?.rdapRegistrarRaw || null
+                  if (!registrarRaw) return null
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-base">原始注册服务机构 RDAP 响应</h4>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowRegistrarRaw(!showRegistrarRaw)}
+                            aria-expanded={showRegistrarRaw}
+                            aria-controls="registrar-rdap-raw"
+                          >
+                            {showRegistrarRaw ? "收起" : "展开"}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registrarRaw, null, 2))}>
+                            <Copy className="h-4 w-4 mr-1" />复制
+                          </Button>
+                        </div>
+                      </div>
+                      {showRegistrarRaw && (
+                        <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
+                          {JSON.stringify(registrarRaw, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* 新增：原始注册管理机构 RDAP 响应 */}
+                {(() => {
+                  const registryRaw = result?.rdapRegistryRaw || effective?.rdapRegistryRaw || result?.result?.rdapRegistryRaw || null
+                  if (!registryRaw) return null
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-base">原始注册管理机构 RDAP 响应</h4>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowRegistryRaw(!showRegistryRaw)}
+                            aria-expanded={showRegistryRaw}
+                            aria-controls="registry-rdap-raw"
+                          >
+                            {showRegistryRaw ? "收起" : "展开"}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registryRaw, null, 2))}>
+                            <Copy className="h-4 w-4 mr-1" />复制
+                          </Button>
+                        </div>
+                      </div>
+                      {showRegistryRaw && (
+                        <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
+                          {JSON.stringify(registryRaw, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )}
           </div>

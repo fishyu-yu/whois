@@ -74,7 +74,9 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
               type,
               timestamp: new Date().toISOString(),
               dataSource: actualDataSource,
-              rdapSource: rdapData.rdapSource
+              rdapSource: rdapData.rdapSource,
+              rdapRegistryRaw: (rdapData as any).registryRaw || null,
+              rdapRegistrarRaw: (rdapData as any).registrarRaw || null
             }
           }
         } catch (e: any) {
