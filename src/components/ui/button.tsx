@@ -1,3 +1,12 @@
+/**
+ * 文件：src/components/ui/button.tsx
+ * 用途：按钮组件，封装样式变体与尺寸，提供一致的交互与无障碍支持
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
+"use client"
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -56,3 +65,29 @@ function Button({
 }
 
 export { Button, buttonVariants }
+
+/**
+ * Button 组件
+ * 支持不同视觉变体（variant）与尺寸（size），并支持 asChild 组合用法
+ * @example
+ * <Button variant="default" size="sm">提交</Button>
+ * @property variant - 视觉样式，如 default/secondary/destructive/ghost/link 等
+ * @property size - 尺寸，如 sm/md/lg/icon
+ * @property disabled - 禁用状态
+ * @property asChild - 将按钮样式应用到传入子组件
+ */
+/**
+ * 变体样式说明：用于控制按钮的颜色与边框等视觉效果
+ * - default：主按钮
+ * - secondary：次级按钮
+ * - destructive：危险操作（红色）
+ * - outline/ghost：弱强调
+ * - link：链接风格（无边框）
+ */
+/**
+ * 尺寸说明：用于控制按钮的高度与左右内边距
+ * - sm：小尺寸
+ * - md：中等（默认）
+ * - lg：大尺寸
+ * - icon：方形图标按钮（宽高一致）
+ */

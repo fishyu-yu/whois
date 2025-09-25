@@ -11,7 +11,16 @@ const execAsync = promisify(exec)
 
 
 // 简单的内存缓存
+/**
+ * 文件：src/app/api/whois/route.ts
+ * 用途：提供域名 WHOIS/RDAP 查询的 API 路由，包含输入校验、RDAP 优先策略、注册商/注册局回退逻辑、结果缓存与标准 WHOIS 兼容。
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文 JSDoc 文件头与函数注释，补充关键逻辑与重要变量说明。
+ */
 const cache = new Map<string, { data: any; timestamp: number }>()
+/** 缓存 TTL（毫秒），默认 5 分钟 */
 const CACHE_TTL = 5 * 60 * 1000 // 5分钟缓存
 
 interface WhoisRequest {

@@ -1,3 +1,11 @@
+/**
+ * 文件：src/components/ui/dropdown-menu.tsx
+ * 用途：下拉菜单组件集合，封装 Radix DropdownMenu 并统一样式与交互
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
 "use client"
 
 import * as React from "react"
@@ -31,6 +39,14 @@ function DropdownMenuTrigger({
   )
 }
 
+/**
+ * 下拉菜单内容容器
+ * 负责定位与动画，支持滚动与最大高度限制
+ * 参数：
+ * - className：附加样式类
+ * - sideOffset：与触发器的间距，默认 4
+ * 返回：DropdownMenuPrimitive.Content 元素
+ */
 function DropdownMenuContent({
   className,
   sideOffset = 4,
@@ -59,6 +75,14 @@ function DropdownMenuGroup({
   )
 }
 
+/**
+ * 菜单项
+ * 支持 destructive 变体与 inset 左内边距，用于可达性与视觉对齐
+ * 参数：
+ * - className：附加样式类
+ * - inset：是否左侧缩进（用于带图标或子菜单）
+ * - variant：视觉风格，default | destructive
+ */
 function DropdownMenuItem({
   className,
   inset,
@@ -82,6 +106,13 @@ function DropdownMenuItem({
   )
 }
 
+/**
+ * 复选菜单项
+ * 使用 ItemIndicator 显示勾选图标
+ * 参数：
+ * - checked：当前是否勾选
+ * - className/children：样式与内容
+ */
 function DropdownMenuCheckboxItem({
   className,
   children,
@@ -119,6 +150,12 @@ function DropdownMenuRadioGroup({
   )
 }
 
+/**
+ * 单选菜单项
+ * 使用圆点指示当前选中项，应搭配 DropdownMenuRadioGroup 使用
+ * 参数：
+ * - className/children：样式与内容
+ */
 function DropdownMenuRadioItem({
   className,
   children,
@@ -255,3 +292,9 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 }
+
+/**
+ * DropdownMenu 组件家族
+ * 包含 Root/Trigger/Content/Item/CheckboxItem/RadioItem/Label/Separator/Sub 等
+ * 统一菜单交互、键盘可达性与视觉规范
+ */

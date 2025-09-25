@@ -114,6 +114,20 @@ let dynamicRdapMap: Record<string, string[]> | null = null;
 let lastBootstrapFetch = 0;
 const BOOTSTRAP_TTL = 24 * 60 * 60 * 1000; // 24小时缓存
 
+/**
+ * 文件：src/lib/rdap-client.ts
+ * 用途：RDAP 客户端，负责根据 IANA 引导与静态映射进行 RDAP 查询，并在可能时优先返回注册商端数据；同时提供短期缓存与支持检测。
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文 JSDoc 文件头与函数注释，补充关键变量说明。
+ */
+/**
+ * IANA RDAP Bootstrap 加载与缓存
+ * - 通过 https://data.iana.org/rdap/dns.json 动态获取 TLD -> RDAP 服务器映射
+ * - 使用 BOOTSTRAP_TTL 进行内存缓存，避免频繁网络请求
+ * @returns Promise<void>
+ */
 async function ensureBootstrapLoaded(): Promise<void> {
   const now = Date.now();
   if (dynamicRdapMap && (now - lastBootstrapFetch) < BOOTSTRAP_TTL) return;

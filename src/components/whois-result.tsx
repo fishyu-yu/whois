@@ -1,3 +1,11 @@
+/**
+ * 文件：src/components/whois-result.tsx
+ * 用途：展示 WHOIS/RDAP 查询结果，包含解析数据与原始文本的呈现与导出
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +46,24 @@ const STATUS_INFO: Record<string, { label: string; severity: number }> = {
   locked: { label: "锁定", severity: 2 },
 }
 
+/**
+ * WhoisResult 组件的属性
+ * @property data - 查询结果数据对象，支持多种嵌套结构（result.raw/parsed 或 data.raw/parsed）
+ * @property onExport - 导出动作回调（可选）
+ * @property onShare - 分享动作回调（可选）
+ */
+interface WhoisResultProps {
+  data: any
+  onExport?: () => void
+  onShare?: () => void
+}
+
+/**
+ * 将状态码标准化为包含中文标签与严重程度的对象
+ * 未知状态将以默认标签“未知状态”返回，严重程度为 1
+ * @param code - RDAP/EPP 状态码
+ * @returns 包含 code、label、severity 的对象
+ */
 const getStatusInfo = (code: string) => {
   const normalizedCode = (code || "").trim()
   const info = STATUS_INFO[normalizedCode]
@@ -45,63 +71,70 @@ const getStatusInfo = (code: string) => {
   return { code: normalizedCode, label: "未知状态", severity: 1 }
 }
 
-interface WhoisResultProps {
-  data: any
-  onExport?: () => void
-  onShare?: () => void
-}
-
+/**
+ * WhoisResult 查询结果展示组件
+ * 展示解析信息、状态概览、原始数据（含注册商/注册局 RDAP 原文），并提供导出与分享操作
+ * @param props - 组件属性
+ * @returns JSX.Element | null
+ */
 export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
-  // Hooks must be called unconditionally at the top-level to satisfy react-hooks/rules-of-hooks
+  // Hooks 必须在组件顶部调用，避免条件调用导致报错
   const [showRegistrarRaw, setShowRegistrarRaw] = useState(false)
   const [showRegistryRaw, setShowRegistryRaw] = useState(false)
   if (!data || !data.result) return null
  
-   // 可能的形态：
-   // 1) 扁平：{ raw, parsed, dataSource, ... }
-   // 2) 包在 data 内：{ data: { raw, parsed } }
-   // 3) 模拟数据：{ dataSource: 'mock', result: { raw, parsed } }
-   const result = data.result
+  /**
+   * 根据不同返回形态提取有效的 raw/parsed 容器
+   * 兼容多层 result.data 或 result.result 结构
+   */
+  const result = data.result
+  const effective = (result && (result.raw || result.parsed))
+    ? result
+    : (result?.result && (result.result.raw || result.result.parsed))
+      ? result.result
+      : (result?.data && (result.data.raw || result.data.parsed))
+        ? result.data
+        : null
  
-   // 先定位有效的 raw/parsed 容器
-   const effective = (result && (result.raw || result.parsed))
-     ? result
-     : (result?.result && (result.result.raw || result.result.parsed))
-       ? result.result
-       : (result?.data && (result.data.raw || result.data.parsed))
-         ? result.data
-         : null
+  const parsed = effective?.parsed || null
+  const raw = effective?.raw || ""
  
-   const parsed = effective?.parsed || null
-   const raw = effective?.raw || ""
+  /**
+   * 将不同命名风格（snake_case/camelCase）与可选字段统一到 normalized
+   */
+  const normalized = {
+    domain: parsed?.domain || parsed?.domain_name,
+    registrar: parsed?.registrar || parsed?.sponsoring_registrar,
+    registrationDate: parsed?.registrationDate || parsed?.creation_date || parsed?.registration_time,
+    expirationDate: parsed?.expirationDate || parsed?.registry_expiry_date || parsed?.expiration_time,
+    nameServers: (() => {
+      const ns = parsed?.nameServers || parsed?.name_server || parsed?.name_servers
+      if (!ns) return []
+      return Array.isArray(ns) ? ns : [ns]
+    })(),
+    domainStatus: (() => {
+      const st = parsed?.domainStatus || parsed?.domain_status || parsed?.status
+      if (!st) return []
+      return Array.isArray(st) ? st : [st]
+    })()
+  }
  
-   // 统一字段名（兼容 snake_case 与 camelCase，以及 .cn 模拟字段）
-   const normalized = {
-     domain: parsed?.domain || parsed?.domain_name,
-     registrar: parsed?.registrar || parsed?.sponsoring_registrar,
-     registrationDate: parsed?.registrationDate || parsed?.creation_date || parsed?.registration_time,
-     expirationDate: parsed?.expirationDate || parsed?.registry_expiry_date || parsed?.expiration_time,
-     nameServers: (() => {
-       const ns = parsed?.nameServers || parsed?.name_server || parsed?.name_servers
-       if (!ns) return []
-       return Array.isArray(ns) ? ns : [ns]
-     })(),
-     domainStatus: (() => {
-       const st = parsed?.domainStatus || parsed?.domain_status || parsed?.status
-       if (!st) return []
-       return Array.isArray(st) ? st : [st]
-     })()
-   }
+  const sortedStatuses = (normalized.domainStatus || [])
+    .map((s: string) => getStatusInfo(s))
+    .sort((a, b) => b.severity - a.severity || a.code.localeCompare(b.code))
  
-   const sortedStatuses = (normalized.domainStatus || [])
-     .map((s: string) => getStatusInfo(s))
-     .sort((a, b) => b.severity - a.severity || a.code.localeCompare(b.code))
- 
-   const copyToClipboard = (text: string) => {
-     navigator.clipboard.writeText(text)
-   }
+  /**
+   * 将文本复制到剪贴板
+   * @param text - 待复制文本
+   */
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+  }
 
-  // 来源徽章
+  /**
+   * 解析数据来源（注册商/注册局/RDAP/WHOIS/模拟），兼容不同层级字段
+   * @returns 数据来源标识字符串
+   */
   const resolveDataSource = () => {
     // dataSource 只在外层 result 上（模拟/真实都有），某些情况下可能缺失
     return result?.dataSource || data?.dataSource || "auto"
@@ -109,8 +142,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
   const source = resolveDataSource()
 
-  // 折叠状态：默认收起（hooks 已在顶部声明）
-  // showRegistrarRaw / showRegistryRaw 已在顶部声明
+  /**
+   * 根据数据来源选择对应的图标
+   * @param dataSource - 数据来源标识
+   * @returns 对应的 React 图标组件
+   */
   const getDataSourceIcon = (dataSource: string) => {
     switch (dataSource) {
       case 'rdap-registry':
@@ -131,6 +167,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     }
   }
 
+  /**
+   * 将数据来源标识转换为中文可读标签
+   * @param dataSource - 数据来源标识
+   * @returns 中文标签字符串
+   */
   const getDataSourceLabel = (dataSource: string) => {
     switch (dataSource) {
       case 'rdap-registry':

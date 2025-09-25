@@ -1,3 +1,11 @@
+/**
+ * 文件：src/components/ui/select.tsx
+ * 用途：下拉选择组件集合，封装 Radix Select 并统一样式
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
 "use client"
 
 import * as React from "react"
@@ -184,3 +192,9 @@ export {
   SelectTrigger,
   SelectValue,
 }
+
+/**
+ * Select 组件集合
+ * 包含 Select/SelectTrigger/SelectContent/SelectItem/SelectValue 等
+ * 统一下拉选择的交互与样式
+ */

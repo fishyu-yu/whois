@@ -1,3 +1,11 @@
+/**
+ * 文件：src/components/ui/tooltip.tsx
+ * 用途：提示气泡组件集合，封装 Radix Tooltip 并统一样式
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：补充统一的中文文件头与 JSDoc 注释
+ */
 "use client"
 
 import * as React from "react"

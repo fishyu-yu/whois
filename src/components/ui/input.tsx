@@ -1,7 +1,25 @@
+/**
+ * 文件：src/components/ui/input.tsx
+ * 用途：文本输入框组件，统一样式与交互状态
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
+"use client"
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Input 输入组件
+ * 提供一致的外观、禁用状态与无障碍支持
+ * @example
+ * <Input type="text" placeholder="请输入" />
+ * @property type - 输入类型，如 text/password/email 等
+ * @property disabled - 禁用输入
+ * @property aria-label - 无障碍标签
+ */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input

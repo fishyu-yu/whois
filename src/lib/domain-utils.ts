@@ -1,6 +1,10 @@
 /**
- * 域名处理工具函数
- * 包含域名验证、格式化、IDN转换等功能
+ * 文件：src/lib/domain-utils.ts
+ * 用途：域名处理工具，包括域名验证、提取 TLD/SLD、根域名判断、子域名判断、IDN 转换与显示格式化等。
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文 JSDoc 文件头与函数注释，补充关键变量说明。
  */
 
 import { getCCTLDInfo, isCCTLD } from './cctld-database';
@@ -33,7 +37,8 @@ export interface DomainValidationResult {
 }
 
 /**
- * 验证域名格式
+ * Punycode 转换模块
+ * 说明：优先使用 ESM 静态导入；在浏览器环境无法使用时回退到 URL API。
  */
 export function validateDomain(domain: string): DomainValidationResult {
   const result: DomainValidationResult = {
@@ -164,7 +169,9 @@ export function validateDomain(domain: string): DomainValidationResult {
 }
 
 /**
- * 提取域名的TLD
+ * 提取域名的 TLD（顶级域）
+ * @param {string} domain 域名
+ * @returns {string} TLD 字符串；当输入为空时返回空字符串
  */
 export function extractTLD(domain: string): string {
   if (!domain) return '';
@@ -173,7 +180,9 @@ export function extractTLD(domain: string): string {
 }
 
 /**
- * 提取域名的SLD（二级域名）
+ * 提取域名的 SLD（二级域名）
+ * @param {string} domain 域名
+ * @returns {string} SLD 字符串；当输入为空或无二级域名时返回空字符串
  */
 export function extractSLD(domain: string): string {
   if (!domain) return '';
@@ -182,7 +191,9 @@ export function extractSLD(domain: string): string {
 }
 
 /**
- * 获取域名的根域名（不包含子域名）
+ * 获取域名的根域名（去除子域名部分）
+ * @param {string} domain 域名
+ * @returns {string} 根域名（例如 a.b.example.com -> example.com）
  */
 export function getRootDomain(domain: string): string {
   if (!domain) return '';
@@ -193,6 +204,8 @@ export function getRootDomain(domain: string): string {
 
 /**
  * 检查是否为子域名
+ * @param {string} domain 域名
+ * @returns {boolean} 当段数大于 2 时返回 true
  */
 export function isSubdomain(domain: string): boolean {
   if (!domain) return false;
@@ -201,7 +214,9 @@ export function isSubdomain(domain: string): boolean {
 }
 
 /**
- * Punycode转Unicode实现
+ * Punycode 转 Unicode
+ * @param {string} punycodeDomain Punycode 格式域名
+ * @returns {string} 对应的 Unicode 域名；转换失败时回退为原输入
  */
 function punycodeToUnicode(punycodeDomain: string): string {
   try {
@@ -223,7 +238,9 @@ function punycodeToUnicode(punycodeDomain: string): string {
 }
 
 /**
- * Unicode转Punycode实现
+ * Unicode 转 Punycode
+ * @param {string} unicodeDomain Unicode 格式域名
+ * @returns {string} 对应的 Punycode 域名；转换失败时回退为原输入
  */
 function unicodeToPunycode(unicodeDomain: string): string {
   try {
@@ -246,6 +263,9 @@ function unicodeToPunycode(unicodeDomain: string): string {
 
 /**
  * 格式化域名显示
+ * IDN：优先显示 Unicode，同时返回 punycode/unicode 两种形式以便界面展示。
+ * @param {string} domain 域名
+ * @returns {{display:string,punycode?:string,unicode?:string}} 显示字符串与可能的 IDN 表示
  */
 export function formatDomainDisplay(domain: string): {
   display: string
@@ -274,6 +294,9 @@ export function formatDomainDisplay(domain: string): {
 
 /**
  * 获取域名的WHOIS服务器
+ * 国别域名：优先返回对应注册管理机构的专用服务器；gTLD 使用预置映射。
+ * @param {string} domain 域名
+ * @returns {string|null} WHOIS 服务器主机名，若未知则返回 null
  */
 export function getDomainWhoisServer(domain: string): string | null {
   const tld = extractTLD(domain);
@@ -299,6 +322,9 @@ export function getDomainWhoisServer(domain: string): string | null {
 
 /**
  * 检查域名是否支持IDN
+ * 国别域名：依据 cctld-database；gTLD：大多数常见 TLD 支持。
+ * @param {string} domain 域名
+ * @returns {boolean} 是否支持国际化域名
  */
 export function supportsIDN(domain: string): boolean {
   const tld = extractTLD(domain);

@@ -1,3 +1,12 @@
+/**
+ * 文件：src/components/ui/card.tsx
+ * 用途：卡片组件集合，包含 Card/CardHeader/Content/Footer/Title/Description/Action
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
+"use client"
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

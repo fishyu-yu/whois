@@ -1,3 +1,11 @@
+/**
+ * 文件：src/components/ui/switch.tsx
+ * 用途：开关组件，封装 Radix Switch 并统一样式与可达性
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
 "use client"
 
 import * as React from "react"

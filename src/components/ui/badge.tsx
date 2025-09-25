@@ -1,3 +1,12 @@
+/**
+ * 文件：src/components/ui/badge.tsx
+ * 用途：徽章组件，显示状态或标签
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
+"use client"
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -44,3 +53,9 @@ function Badge({
 }
 
 export { Badge, badgeVariants }
+
+/**
+ * Badge 徽章组件
+ * 用于突出显示状态或类别标签
+ * @property variant - 视觉变体：default/secondary/destructive/outline 等
+ */

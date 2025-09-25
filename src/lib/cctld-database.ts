@@ -320,6 +320,12 @@ export const CCTLD_DATABASE: Record<string, CCTLDInfo> = {
 /**
  * 根据域名后缀获取国别域名信息
  */
+/**
+ * 根据 TLD 获取 ccTLD 信息
+ * 参数：
+ * - tld：顶级域名后缀（不含点），大小写不敏感
+ * 返回：匹配的 CCTLDInfo；未找到时返回 null
+ */
 export function getCCTLDInfo(tld: string): CCTLDInfo | null {
   const normalizedTLD = tld.toLowerCase().replace('.', '');
   return CCTLD_DATABASE[normalizedTLD] || null;

@@ -45,7 +45,12 @@ export interface ParsedRDAPData {
 }
 
 /**
- * 解析vCard数据
+ * 文件：src/lib/rdap-parser.ts
+ * 用途：解析 RDAP 响应为统一的 WHOIS 字段表示，并支持将结构化数据回转为 WHOIS 文本。
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文 JSDoc 文件头与函数注释，说明解析流程与字段含义。
  */
 function parseVCard(vcardArray: any[]): any {
   if (!vcardArray || !Array.isArray(vcardArray) || vcardArray.length < 2) {

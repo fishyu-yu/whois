@@ -1,3 +1,11 @@
+/**
+ * 文件：src/components/whois-form.tsx
+ * 用途：Whois 查询表单组件，负责输入、类型识别与提交
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
 "use client"
 
 import { useState } from "react"
@@ -9,16 +17,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Globe, Flag } from "lucide-react"
 import { validateDomain } from "@/lib/domain-utils"
 
+/**
+ * WhoisForm 组件的属性
+ * @property onSubmit - 查询提交回调：(query, type, dataSource)
+ * @property loading - 加载状态，禁用输入与按钮
+ */
 interface WhoisFormProps {
   onSubmit: (query: string, type: string, dataSource?: string) => void
   loading: boolean
 }
 
+/**
+ * WhoisForm 查询表单组件
+ * 负责输入交互、类型选择与触发查询
+ * @param props - 组件属性
+ * @returns 查询表单 UI
+ */
 export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
-  const [query, setQuery] = useState("")
-  const [queryType, setQueryType] = useState("auto")
-  const [domainValidation, setDomainValidation] = useState<any>(null)
+  /** 当前输入的查询字符串 */ const [query, setQuery] = useState("")
+  /** 当前选择的查询类型。'auto' 自动识别；'domain' 指定域名；'ip'/'asn' 暂不支持 */ const [queryType, setQueryType] = useState("auto")
+  /** 域名验证结果（仅在识别为域名时生成）；包含 isValid、errors、isCCTLD、isIDN 等字段 */ const [domainValidation, setDomainValidation] = useState<any>(null)
 
+  /**
+   * 自动检测输入的查询类型（域名 / IP / 未知）
+   * 使用宽松域名正则以支持国际化域名（IDN）与 punycode 前缀 xn--
+   * @param input - 待检测的字符串
+   * @returns 'domain' | 'ip' | 'unknown'
+   */
   const detectQueryType = (input: string): string => {
     // 域名检测 - 支持国际化域名和更多字符
     const domainRegex = /^[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$|^xn--[a-zA-Z0-9-]+(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$/
@@ -31,6 +56,10 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     return "unknown"
   }
 
+  /**
+   * 输入变化处理：更新 query 并在识别为域名时触发验证
+   * @param value - 新的输入值
+   */
   const handleInputChange = (value: string) => {
     setQuery(value)
     
@@ -44,6 +73,11 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     }
   }
 
+  /**
+   * 表单提交：校验输入、决定查询类型并触发回调
+   * - 暂不支持 IP/ASN 查询，会弹出提示
+   * - 根据用户选择或自动检测决定最终类型
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!query.trim()) return
@@ -65,6 +99,11 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     onSubmit(query.trim(), detectedType, "rdap")
   }
 
+  /**
+   * 生成类型 Badge 显示（域名/IP/未知）
+   * @param input - 输入字符串
+   * @returns JSX.Element | null
+   */
   const getQueryTypeBadge = (input: string) => {
     if (!input.trim()) return null
     const type = detectQueryType(input.trim())

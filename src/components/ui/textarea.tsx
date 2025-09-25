@@ -1,3 +1,12 @@
+/**
+ * 文件：src/components/ui/textarea.tsx
+ * 用途：多行文本输入组件，统一样式与状态
+ * 作者：Ryan
+ * 创建日期：2025-09-25
+ * 修改记录：
+ * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ */
+"use client"
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -16,3 +25,9 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
 }
 
 export { Textarea }
+
+/**
+ * Textarea 文本域组件
+ * @property rows - 行数
+ * @property disabled - 禁用状态
+ */
