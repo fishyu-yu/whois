@@ -4,24 +4,16 @@
  */
 
 import { getCCTLDInfo, isCCTLD } from './cctld-database';
+import * as punycodeLib from 'punycode'
 
-// 动态导入punycode库
-let punycode: any = null;
-if (typeof window === 'undefined') {
-  // 服务器端
-  try {
-    punycode = require('punycode');
-  } catch (e) {
-    console.warn('Punycode library not available on server side');
-  }
-} else {
-  // 客户端 - 使用动态导入
-  import('punycode').then(module => {
-    punycode = module.default || module;
-  }).catch(() => {
-    console.warn('Punycode library not available on client side');
-  });
+// 为 punycode 模块声明最小类型接口
+type PunycodeModule = {
+  toASCII: (input: string) => string
+  toUnicode: (input: string) => string
 }
+
+// 统一使用 ESM 静态导入，避免 require 与运行时动态导入
+const punycode: PunycodeModule | null = (punycodeLib as unknown as PunycodeModule)
 
 /**
  * 域名验证结果接口
@@ -213,20 +205,20 @@ export function isSubdomain(domain: string): boolean {
  */
 function punycodeToUnicode(punycodeDomain: string): string {
   try {
-    if (punycode && punycode.toUnicode) {
-      return punycode.toUnicode(punycodeDomain);
+    if (punycode) {
+      return punycode.toUnicode(punycodeDomain)
     }
     
     // 回退到浏览器内置API
     if (typeof URL !== 'undefined') {
-      const url = new URL(`http://${punycodeDomain}`);
-      return url.hostname;
+      const url = new URL(`http://${punycodeDomain}`)
+      return url.hostname
     }
     
-    return punycodeDomain;
+    return punycodeDomain
   } catch (error) {
-    console.warn('Punycode to Unicode conversion failed:', error);
-    return punycodeDomain;
+    console.warn('Punycode to Unicode conversion failed:', error)
+    return punycodeDomain
   }
 }
 
@@ -235,20 +227,20 @@ function punycodeToUnicode(punycodeDomain: string): string {
  */
 function unicodeToPunycode(unicodeDomain: string): string {
   try {
-    if (punycode && punycode.toASCII) {
-      return punycode.toASCII(unicodeDomain);
+    if (punycode) {
+      return punycode.toASCII(unicodeDomain)
     }
     
     // 回退到浏览器内置API
     if (typeof URL !== 'undefined') {
-      const url = new URL(`http://${unicodeDomain}`);
-      return url.hostname;
+      const url = new URL(`http://${unicodeDomain}`)
+      return url.hostname
     }
     
-    return unicodeDomain;
+    return unicodeDomain
   } catch (error) {
-    console.warn('Unicode to Punycode conversion failed:', error);
-    return unicodeDomain;
+    console.warn('Unicode to Punycode conversion failed:', error)
+    return unicodeDomain
   }
 }
 
@@ -256,28 +248,28 @@ function unicodeToPunycode(unicodeDomain: string): string {
  * 格式化域名显示
  */
 export function formatDomainDisplay(domain: string): {
-  display: string;
-  punycode?: string;
-  unicode?: string;
+  display: string
+  punycode?: string
+  unicode?: string
 } {
-  const validation = validateDomain(domain);
+  const validation = validateDomain(domain)
   
   if (!validation.isValid) {
-    return { display: domain };
+    return { display: domain }
   }
 
-  const result: any = { display: domain };
+  const result: { display: string; punycode?: string; unicode?: string } = { display: domain }
 
   if (validation.isIDN) {
     if (validation.unicode && validation.punycode) {
-      result.unicode = validation.unicode;
-      result.punycode = validation.punycode;
+      result.unicode = validation.unicode
+      result.punycode = validation.punycode
       // 优先显示Unicode版本
-      result.display = validation.unicode;
+      result.display = validation.unicode
     }
   }
 
-  return result;
+  return result
 }
 
 /**

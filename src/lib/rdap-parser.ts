@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * RDAP数据解析器
  * 将RDAP响应转换为统一的WHOIS格式

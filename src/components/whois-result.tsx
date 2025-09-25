@@ -52,7 +52,10 @@ interface WhoisResultProps {
 }
 
 export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
-   if (!data || !data.result) return null
+  // Hooks must be called unconditionally at the top-level to satisfy react-hooks/rules-of-hooks
+  const [showRegistrarRaw, setShowRegistrarRaw] = useState(false)
+  const [showRegistryRaw, setShowRegistryRaw] = useState(false)
+  if (!data || !data.result) return null
  
    // 可能的形态：
    // 1) 扁平：{ raw, parsed, dataSource, ... }
@@ -106,10 +109,8 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
   const source = resolveDataSource()
 
-  // 折叠状态：默认收起
-  const [showRegistrarRaw, setShowRegistrarRaw] = useState(false)
-  const [showRegistryRaw, setShowRegistryRaw] = useState(false)
-
+  // 折叠状态：默认收起（hooks 已在顶部声明）
+  // showRegistrarRaw / showRegistryRaw 已在顶部声明
   const getDataSourceIcon = (dataSource: string) => {
     switch (dataSource) {
       case 'rdap-registry':

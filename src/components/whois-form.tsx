@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Loader2, Globe, Flag, Server, User, ExternalLink } from "lucide-react"
-import { validateDomain, formatDomainDisplay } from "@/lib/domain-utils"
+import { Search, Globe, Flag } from "lucide-react"
+import { validateDomain } from "@/lib/domain-utils"
 
 interface WhoisFormProps {
   onSubmit: (query: string, type: string, dataSource?: string) => void
@@ -22,7 +22,11 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
   const detectQueryType = (input: string): string => {
     // 域名检测 - 支持国际化域名和更多字符
     const domainRegex = /^[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$|^xn--[a-zA-Z0-9-]+(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$/
+    // 简单IP检测（IPv4/IPv6 近似）
+    const ipv4Regex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.)){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
+    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$/
 
+    if (ipv4Regex.test(input) || ipv6Regex.test(input)) return "ip"
     if (domainRegex.test(input)) return "domain"
     return "unknown"
   }
@@ -44,7 +48,20 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     e.preventDefault()
     if (!query.trim()) return
 
-    const detectedType = queryType === "auto" ? detectQueryType(query.trim()) : queryType
+    // 暂不支持 IP/ASN 查询
+    if (queryType === "ip" || queryType === "asn") {
+      alert("当前版本暂不支持 IP 或 ASN 查询，敬请期待")
+      return
+    }
+
+    const autoDetected = detectQueryType(query.trim())
+    const detectedType = queryType === "auto" ? autoDetected : queryType
+
+    if (detectedType === "unknown") {
+      alert("请输入有效的域名，如 example.com")
+      return
+    }
+
     onSubmit(query.trim(), detectedType, "rdap")
   }
 
@@ -53,6 +70,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     const type = detectQueryType(input.trim())
     const typeLabels = {
       domain: "域名",
+      ip: "IP",
       unknown: "未知"
     }
     return (
@@ -67,7 +85,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
       <CardHeader>
         <CardTitle className="text-xl sm:text-2xl">Whois 查询</CardTitle>
         <CardDescription className="text-sm sm:text-base">
-          输入域名进行查询
+          输入域名进行查询（IP/ASN 功能即将支持）
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -76,11 +94,12 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
             <div className="flex-1">
               <Input
                 type="text"
-                placeholder="例如: example.com, google.com, github.com"
+                placeholder="例如: example.com 或 1.1.1.1"
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
                 disabled={loading}
                 className="w-full text-sm sm:text-base"
+                aria-label="查询输入"
               />
               
               {/* 域名验证信息显示 */}
@@ -126,6 +145,22 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
                 </div>
               )}
             </div>
+
+            {/* 类型选择 */}
+            <div className="sm:w-40 w-full">
+              <Select value={queryType} onValueChange={(v) => setQueryType(v)}>
+                <SelectTrigger className="w-full" aria-label="选择查询类型">
+                  <SelectValue placeholder="自动识别" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">自动识别</SelectItem>
+                  <SelectItem value="domain">域名</SelectItem>
+                  <SelectItem value="ip" disabled>IP（暂不支持）</SelectItem>
+                  <SelectItem value="asn" disabled>ASN（暂不支持）</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button 
               type="submit" 
               disabled={loading || !query.trim()}
@@ -150,6 +185,11 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
               <span>检测到类型:</span>
               <Badge variant="secondary" className="text-xs">
                 {detectQueryType(query.trim())}
+              </Badge>
+              <span className="mx-1">•</span>
+              <span>当前选择:</span>
+              <Badge variant="outline" className="text-xs">
+                {queryType}
               </Badge>
             </div>
           )}

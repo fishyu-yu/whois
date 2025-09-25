@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Github } from "lucide-react"
+import { Github, Clock, Trash2 } from "lucide-react"
 
 interface WhoisData {
   query: string
@@ -15,9 +15,44 @@ interface WhoisData {
   timestamp: string
 }
 
+interface HistoryItem {
+  query: string
+  type: string
+  timestamp: string
+}
+
+const HISTORY_STORAGE_KEY = "whois_history"
+
 export default function Home() {
   const [currentResult, setCurrentResult] = useState<WhoisData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [history, setHistory] = useState<HistoryItem[]>([])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_STORAGE_KEY)
+      if (raw) {
+        const parsed: HistoryItem[] = JSON.parse(raw)
+        setHistory(Array.isArray(parsed) ? parsed.slice(0, 20) : [])
+      }
+    } catch {}
+  }, [])
+
+  const saveHistory = (list: HistoryItem[]) => {
+    setHistory(list)
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list.slice(0, 20)))
+    } catch {}
+  }
+
+  const addHistory = (item: HistoryItem) => {
+    const deduped = [item, ...history.filter(h => !(h.query === item.query && h.type === item.type))]
+    saveHistory(deduped.slice(0, 20))
+  }
+
+  const clearHistory = () => {
+    saveHistory([])
+  }
 
   const handleQuery = async (query: string, type: string, dataSource?: string) => {
     setLoading(true)
@@ -35,12 +70,14 @@ export default function Home() {
           message = err?.error || err?.details || message
         } catch {}
 
-        setCurrentResult({
+        const errorData: WhoisData = {
           query,
           type,
           result: { error: message },
           timestamp: new Date().toISOString(),
-        })
+        }
+        setCurrentResult(errorData)
+        addHistory({ query, type, timestamp: errorData.timestamp })
         return
       }
 
@@ -53,14 +90,17 @@ export default function Home() {
       }
 
       setCurrentResult(whoisData)
+      addHistory({ query, type, timestamp: whoisData.timestamp })
     } catch (error) {
       console.error("查询错误:", error)
-      setCurrentResult({
+      const errorData: WhoisData = {
         query,
         type,
         result: { error: "查询失败，请稍后重试" },
         timestamp: new Date().toISOString(),
-      })
+      }
+      setCurrentResult(errorData)
+      addHistory({ query, type, timestamp: errorData.timestamp })
     } finally {
       setLoading(false)
     }
@@ -131,23 +171,83 @@ export default function Home() {
        </header>
 
        {/* 主要内容（垂直+水平居中） */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8 safe-bottom">
-         <div className="w-full max-w-2xl mx-auto space-y-8">
-           {/* 中心聚焦卡片：表单 + 结果 */}
-           <Card className="w-full shadow-md rounded-xl">
-             <CardContent className="space-y-6">
-               <WhoisForm onSubmit={handleQuery} loading={loading} />
-               <WhoisResult
-                 data={currentResult}
-                 onExport={() => currentResult && handleExport(currentResult)}
-                 onShare={() => currentResult && handleShare(currentResult)}
-               />
-             </CardContent>
-           </Card>
+      <main className="flex-1 px-4 py-8 safe-bottom">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 左侧：搜索与结果（更突出，占两列） */}
+            <div className="md:col-span-2">
+              <Card className="w-full shadow-md rounded-xl">
+                <CardContent className="space-y-6 relative">
+                  {/* 卡片级加载遮罩 */}
+                  {loading && (
+                    <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center rounded-xl z-10" aria-hidden>
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground"></div>
+                        正在查询，请稍候...
+                      </div>
+                    </div>
+                  )}
+                  <WhoisForm onSubmit={handleQuery} loading={loading} />
+                  {!currentResult && (
+                    <div className="p-4 rounded-lg border bg-muted/30 text-sm text-muted-foreground">
+                      请输入域名进行查询，支持自动识别类型并展示结构化结果。
+                    </div>
+                  )}
+                  <WhoisResult
+                    data={currentResult}
+                    onExport={() => currentResult && handleExport(currentResult)}
+                    onShare={() => currentResult && handleShare(currentResult)}
+                  />
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* 已移除功能介绍区块，保持页面简洁聚焦 */}
-         </div>
-       </main>
+            {/* 右侧：历史记录（粘性侧栏） */}
+            <div className="md:col-span-1">
+              <div className="md:sticky md:top-6">
+                <Card className="w-full">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <CardTitle className="text-base">查询历史</CardTitle>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={clearHistory} disabled={history.length === 0 || loading} aria-disabled={history.length === 0 || loading}>
+                        <Trash2 className="h-4 w-4 mr-1" />清空
+                      </Button>
+                    </div>
+                    <CardDescription>仅在本地浏览器保存，点击可快速复查</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {history.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">暂无历史记录</div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {history.map((h, idx) => (
+                          <div key={`${h.query}-${h.timestamp}-${idx}`} className="flex items-center justify-between gap-3 p-2 rounded-md border hover:bg-muted/50">
+                            <button
+                              className="text-left flex-1"
+                              onClick={() => handleQuery(h.query, h.type)}
+                              disabled={loading}
+                              aria-label={`重新查询 ${h.query}`}
+                            >
+                              <div className="font-mono text-sm">{h.query}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(h.timestamp).toLocaleString('zh-CN')}</div>
+                            </button>
+                            <Button variant="outline" size="sm" onClick={() => handleQuery(h.query, h.type)} disabled={loading}>
+                              重新查询
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
 
        {/* 页脚 */}
        <footer className="border-t mt-8">

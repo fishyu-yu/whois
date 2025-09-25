@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * RDAP (Registration Data Access Protocol) Client
  * RDAP是WHOIS的现代化替代方案，提供JSON格式的结构化数据
