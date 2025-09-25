@@ -112,6 +112,28 @@ export const CCTLD_DATABASE: Record<string, CCTLDInfo> = {
     active: true
   },
 
+  // 新增：更多 ccTLD 适配
+  'io': {
+    code: 'IO',
+    country: '英属印度洋领地',
+    countryEn: 'British Indian Ocean Territory',
+    registry: 'NIC.IO Registry',
+    registryUrl: 'https://nic.io/',
+    whoisServer: 'whois.nic.io',
+    idn: true,
+    active: true
+  },
+  'kg': {
+    code: 'KG',
+    country: '吉尔吉斯斯坦',
+    countryEn: 'Kyrgyzstan',
+    registry: 'KG Domain Registry',
+    registryUrl: 'https://www.domain.kg/',
+    whoisServer: 'whois.domain.kg',
+    idn: true,
+    active: true
+  },
+
   // 欧洲地区
   'uk': {
     code: 'GB',

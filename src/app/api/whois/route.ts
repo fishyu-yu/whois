@@ -323,7 +323,7 @@ function parseWhoisResult(raw: string, type: string): any {
       const [key, ...valueParts] = line.split(":")
       const value = valueParts.join(":").trim()
       if (key && value) {
-        const cleanKey = key.trim().toLowerCase().replace(/\s+/g, "_")
+        const cleanKey = key.trim().toLowerCase().replace(/[\s\/-]+/g, "_")
         if (parsed[cleanKey]) {
           if (Array.isArray(parsed[cleanKey])) {
             parsed[cleanKey].push(value)
@@ -345,28 +345,17 @@ function getMockWhoisData(query: string, type: string): any {
   const timestamp = new Date().toISOString()
   
   if (type === "domain") {
+    // 统一处理：所有模拟返回均显示“暂不支持该后缀”
     return {
       query,
       type,
       timestamp,
       dataSource: "mock",
       result: {
-        raw: `Domain Name: ${query.toUpperCase()}\nRegistry Domain ID: D123456789-LROR\nRegistrar WHOIS Server: whois.example.com\nRegistrar URL: http://www.example.com\nUpdated Date: 2024-01-15T10:30:00Z\nCreation Date: 2020-03-10T08:15:00Z\nRegistry Expiry Date: 2025-03-10T08:15:00Z\nRegistrar: Example Registrar Inc.\nRegistrar IANA ID: 123\nRegistrar Abuse Contact Email: abuse@example.com\nRegistrar Abuse Contact Phone: +1.1234567890\nDomain Status: clientTransferProhibited https://icann.org/epp#clientTransferProhibited\nName Server: NS1.EXAMPLE.COM\nName Server: NS2.EXAMPLE.COM\nDNSSEC: unsigned`,
+        raw: `暂不支持该后缀 (${query})`,
         parsed: {
           domain_name: query.toUpperCase(),
-          registry_domain_id: "D123456789-LROR",
-          registrar_whois_server: "whois.example.com",
-          registrar_url: "http://www.example.com",
-          updated_date: "2024-01-15T10:30:00Z",
-          creation_date: "2020-03-10T08:15:00Z",
-          registry_expiry_date: "2025-03-10T08:15:00Z",
-          registrar: "Example Registrar Inc.",
-          registrar_iana_id: "123",
-          registrar_abuse_contact_email: "abuse@example.com",
-          registrar_abuse_contact_phone: "+1.1234567890",
-          domain_status: ["clientTransferProhibited https://icann.org/epp#clientTransferProhibited"],
-          name_server: ["NS1.EXAMPLE.COM", "NS2.EXAMPLE.COM"],
-          dnssec: "unsigned"
+          status: "暂不支持该后缀"
         }
       }
     }
@@ -378,8 +367,8 @@ function getMockWhoisData(query: string, type: string): any {
     timestamp,
     dataSource: "mock",
     result: {
-      raw: `Mock data for ${query}`,
-      parsed: { query, type, status: "mock" }
+      raw: `暂不支持该后缀 (${query})`,
+      parsed: { query, type, status: "暂不支持该后缀" }
     }
   }
 }
@@ -394,12 +383,13 @@ function getCNDomainMockData(query: string): any {
     timestamp,
     dataSource: "registry",
     result: {
-      raw: `Domain Name: ${query.toLowerCase()}\nROID: 20030321s10001s00193214-cn\nDomain Status: ok\nRegistrant: 魏涛\nRegistrant Contact Email: 151026@qq.com\nSponsoring Registrar: 北京新网数码信息技术有限公司\nName Server: ns11.xincache.com\nName Server: ns12.xincache.com\nRegistration Time: 2003-03-21 22:42:05\nExpiration Time: 2026-03-21 22:42:05\nDNSSEC: unsigned`,
+      raw: `Domain Name: ${query.toLowerCase()}\nROID: 20030321s10001s00193214-cn\nDomain Status: ok\nRegistrant: 魏涛\nRegistrant/Organization: Registrant\nRegistrant Contact Email: 151026@qq.com\nSponsoring Registrar: 北京新网数码信息技术有限公司\nName Server: ns11.xincache.com\nName Server: ns12.xincache.com\nRegistration Time: 2003-03-21 22:42:05\nExpiration Time: 2026-03-21 22:42:05\nDNSSEC: unsigned`,
       parsed: {
         domain_name: query.toLowerCase(),
         roid: "20030321s10001s00193214-cn",
         domain_status: "ok",
         registrant: "魏涛",
+        registrant_organization: "Registrant", // 新增：注册人/机构
         registrant_contact_email: "151026@qq.com",
         sponsoring_registrar: "北京新网数码信息技术有限公司",
         name_server: [

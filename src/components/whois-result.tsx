@@ -266,12 +266,16 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
                 {/* 联系人信息 */}
                 {(() => {
+                  // 根据域名判断是否为 .CN，以便调整“组织”字段标签为“注册人/机构”
+                  const currentDomain = normalized.domain || (typeof parsed?.domain_name === 'string' ? parsed?.domain_name : '')
+                  const isCN = (currentDomain || '').toLowerCase().endsWith('.cn')
+
                   const contacts = {
                     registrant: {
-                      name: parsed?.registrant_name,
+                      name: parsed?.registrant_name || parsed?.registrant,
                       organization: parsed?.registrant_organization,
-                      email: parsed?.registrant_email,
-                      phone: parsed?.registrant_phone,
+                      email: parsed?.registrant_email || parsed?.registrant_contact_email,
+                      phone: parsed?.registrant_phone || (parsed as any)?.registrant_contact_phone,
                       country: parsed?.registrant_country,
                     },
                     administrative: {
@@ -299,10 +303,10 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                   const hasAny = Object.values(contacts).some((c: any) => c && (c.name || c.organization || c.email || c.phone || c.country))
                   if (!hasAny) return null
 
-                  const renderContactBlock = (title: string, c: any) => {
+                  const renderContactBlock = (title: string, c: any, orgLabel?: string) => {
                     const fields = [
                       { label: '姓名', value: c?.name },
-                      { label: '组织', value: c?.organization },
+                      { label: orgLabel || '组织', value: c?.organization },
                       { label: '邮箱', value: c?.email },
                       { label: '电话', value: c?.phone },
                       { label: '国家/地区', value: c?.country },
@@ -330,7 +334,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                         联系人信息
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {renderContactBlock('注册人', contacts.registrant)}
+                        {renderContactBlock('注册人', contacts.registrant, isCN ? '注册人/机构' : '组织')}
                         {renderContactBlock('行政联系人', contacts.administrative)}
                         {renderContactBlock('技术联系人', contacts.technical)}
                         {renderContactBlock('账单联系人', contacts.billing)}
