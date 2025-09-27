@@ -163,7 +163,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
                       )}
                     </div>
                   ) : (
-                    <div className="glass-panel p-3 rounded-lg border-destructive/20 bg-destructive/5">
+                    <div className="glass-panel p-3 rounded-[var(--radius-lg)] border-destructive/20 bg-destructive/5">
                       <p className="text-destructive text-sm font-medium">域名格式错误</p>
                       {domainValidation.errors && domainValidation.errors.length > 0 && (
                         <ul className="text-xs text-destructive/80 mt-1 space-y-1">
@@ -212,7 +212,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
           </div>
 
           {query.trim() && (
-            <div className="glass-panel glass-enter p-3 rounded-lg">
+            <div className="glass-panel glass-enter p-3 rounded-[var(--radius-lg)]">
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span>检测到类型:</span>
                 <Badge variant="secondary" className="text-xs glass-panel">

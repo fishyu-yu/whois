@@ -178,15 +178,15 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* 左侧：搜索与结果（更突出，占两列） */}
             <div className="md:col-span-2">
-              <div className="glass-card glass-enter glass-hover w-full shadow-md rounded-xl relative overflow-hidden">
+              <div className="glass-card glass-enter glass-hover w-full shadow-md rounded-[var(--radius-lg)] relative overflow-hidden">
                 <div className="space-y-6 relative p-6">
                   {/* 卡片级加载遮罩 */}
                   {loading && (
                     <div
-                      className="absolute inset-0 rounded-xl z-20 glass-overlay glass-fade-in flex items-center justify-center"
+                      className="absolute inset-0 rounded-[var(--radius-lg)] z-20 glass-overlay glass-fade-in flex items-center justify-center"
                       aria-hidden
                     >
-                      <div className="flex items-center gap-2 text-sm backdrop-blur-sm bg-background/20 px-4 py-2 rounded-full border border-white/20">
+                      <div className="flex items-center gap-2 text-sm glass-chip px-4 py-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground"></div>
                         正在查询，请稍候...
                       </div>
@@ -194,7 +194,7 @@ export default function Home() {
                   )}
                   <WhoisForm onSubmit={handleQuery} loading={loading} />
                   {!currentResult && (
-                    <div className="p-4 rounded-lg glass-panel text-sm text-muted-foreground glass-enter">
+                    <div className="p-4 rounded-[var(--radius-lg)] glass-panel text-sm text-muted-foreground glass-enter">
                       请输入域名进行查询，支持自动识别类型并展示结构化结果。
                     </div>
                   )}
@@ -231,7 +231,7 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground mb-4">仅在本地浏览器保存，点击可快速复查</p>
                     
                     {history.length === 0 ? (
-                      <div className="text-sm text-muted-foreground glass-panel p-4 rounded-lg text-center">
+                      <div className="text-sm text-muted-foreground glass-panel p-4 rounded-[var(--radius-lg)] text-center">
                         暂无历史记录
                       </div>
                     ) : (

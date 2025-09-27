@@ -218,7 +218,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
         <div className="space-y-6">
           {/* 查询信息 */}
-          <div className="glass-panel glass-enter flex items-center gap-2 p-3 rounded-lg">
+          <div className="glass-panel glass-enter flex items-center gap-2 p-3 rounded-[var(--radius-lg)]">
             <Globe className="h-4 w-4" />
             <span className="font-medium">查询目标:</span>
             <code className="glass-panel px-2 py-1 rounded text-sm">{data.query}</code>
@@ -226,7 +226,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
           {/* 错误处理 */}
           {result.error && (
-            <div className="glass-panel glass-enter p-4 border-destructive/20 bg-destructive/5 rounded-lg">
+            <div className="glass-panel glass-enter p-4 border-destructive/20 bg-destructive/5 rounded-[var(--radius-lg)]">
               <p className="text-destructive font-medium">查询失败</p>
               <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
             </div>
@@ -427,7 +427,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     复制
                   </Button>
                 </div>
-                <pre className="glass-panel p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
+                <pre className="glass-panel p-4 rounded-[var(--radius-lg)] text-sm overflow-x-auto whitespace-pre-wrap">
                   {raw}
                 </pre>
 
@@ -457,7 +457,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                         </div>
                       </div>
                       {showRegistrarRaw && (
-                        <pre className="glass-panel p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
+                        <pre className="glass-panel p-4 rounded-[var(--radius-lg)] text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
                           {JSON.stringify(registrarRaw, null, 2)}
                         </pre>
                       )}
@@ -490,7 +490,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                         </div>
                       </div>
                       {showRegistryRaw && (
-                        <pre className="glass-panel p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
+                        <pre className="glass-panel p-4 rounded-[var(--radius-lg)] text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
                           {JSON.stringify(registryRaw, null, 2)}
                         </pre>
                       )}
