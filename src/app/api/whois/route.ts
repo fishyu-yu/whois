@@ -40,13 +40,13 @@ function validateInput(query: string, type: string): { valid: boolean; error?: s
     return { valid: false, error: "查询内容不能为空" }
   }
 
-  // 只允许域名查询
-  if (type !== "domain") {
-    return { valid: false, error: "仅支持域名查询" }
+  // 支持域名、IP、ASN 查询类型
+  if (!["domain", "ip", "asn"].includes(type)) {
+    return { valid: false, error: "不支持的查询类型" }
   }
 
   // 基本的安全检查，防止命令注入
-  if (/[;&|`$(){}[\]\\]/.test(trimmedQuery)) {
+  if (/[;&|`$(){}[\\]\\]/.test(trimmedQuery)) {
     return { valid: false, error: "查询内容包含非法字符" }
   }
 

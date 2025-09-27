@@ -182,7 +182,7 @@ export default function Home() {
                 <CardContent className="space-y-6 relative">
                   {/* 卡片级加载遮罩 */}
                   {loading && (
-                    <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center rounded-xl z-10" aria-hidden>
+                    <div className="absolute inset-0 border border-border/40 bg-background/45 supports-[backdrop-filter]:bg-background/30 backdrop-blur-md shadow-sm flex items-center justify-center rounded-xl z-10 transition-[opacity,filter] duration-300" aria-hidden>
                       <div className="flex items-center gap-2 text-sm">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground"></div>
                         正在查询，请稍候...

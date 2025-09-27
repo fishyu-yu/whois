@@ -8,16 +8,18 @@
  */
 
 import { getCCTLDInfo, isCCTLD } from './cctld-database';
-import * as punycodeLib from 'punycode'
 
-// 为 punycode 模块声明最小类型接口
-type PunycodeModule = {
-  toASCII: (input: string) => string
-  toUnicode: (input: string) => string
-}
 
-// 统一使用 ESM 静态导入，避免 require 与运行时动态导入
-const punycode: PunycodeModule | null = (punycodeLib as unknown as PunycodeModule)
+// 移除对 punycode 的静态依赖，避免在客户端打包时出现模块工厂不可用的问题
+// 统一使用 URL API 的 IDN 转换能力（Node 与浏览器均支持），从而避免引入额外依赖导致的 HMR 报错
+// 
+// 为 punycode 模块声明最小类型接口（保留占位，当前不实际使用第三方库）
+// type PunycodeModule = {
+//   toASCII: (input: string) => string
+//   toUnicode: (input: string) => string
+// }
+// 设为 null，触发下方函数中的 URL API 回退逻辑
+const punycode: any = null
 
 /**
  * 域名验证结果接口

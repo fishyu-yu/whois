@@ -39,10 +39,10 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
   /** 域名验证结果（仅在识别为域名时生成）；包含 isValid、errors、isCCTLD、isIDN 等字段 */ const [domainValidation, setDomainValidation] = useState<any>(null)
 
   /**
-   * 自动检测输入的查询类型（域名 / IP / 未知）
+   * 自动检测输入的查询类型（域名 / IP / ASN / 未知）
    * 使用宽松域名正则以支持国际化域名（IDN）与 punycode 前缀 xn--
    * @param input - 待检测的字符串
-   * @returns 'domain' | 'ip' | 'unknown'
+   * @returns 'domain' | 'ip' | 'asn' | 'unknown'
    */
   const detectQueryType = (input: string): string => {
     // 域名检测 - 支持国际化域名和更多字符
@@ -50,8 +50,11 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     // 简单IP检测（IPv4/IPv6 近似）
     const ipv4Regex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.)){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
     const ipv6Regex = /^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$/
+    // ASN 检测：AS 或纯数字（不含点/冒号）
+    const asnRegex = /^(AS)?\d{1,10}$/i
 
     if (ipv4Regex.test(input) || ipv6Regex.test(input)) return "ip"
+    if (!input.includes('.') && !input.includes(':') && asnRegex.test(input)) return "asn"
     if (domainRegex.test(input)) return "domain"
     return "unknown"
   }
@@ -82,17 +85,11 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     e.preventDefault()
     if (!query.trim()) return
 
-    // 暂不支持 IP/ASN 查询
-    if (queryType === "ip" || queryType === "asn") {
-      alert("当前版本暂不支持 IP 或 ASN 查询，敬请期待")
-      return
-    }
-
     const autoDetected = detectQueryType(query.trim())
     const detectedType = queryType === "auto" ? autoDetected : queryType
 
     if (detectedType === "unknown") {
-      alert("请输入有效的域名，如 example.com")
+      alert("请输入有效的域名/IP/ASN，例如 example.com、1.1.1.1 或 AS13335")
       return
     }
 
@@ -124,7 +121,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
       <CardHeader>
         <CardTitle className="text-xl sm:text-2xl">Whois 查询</CardTitle>
         <CardDescription className="text-sm sm:text-base">
-          输入域名进行查询（IP/ASN 功能即将支持）
+          输入域名、IP 地址或 ASN 进行查询
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -133,7 +130,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
             <div className="flex-1">
               <Input
                 type="text"
-                placeholder="例如: example.com 或 1.1.1.1"
+                placeholder="例如: example.com、1.1.1.1、AS13335"
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
                 disabled={loading}
@@ -194,8 +191,8 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
                 <SelectContent>
                   <SelectItem value="auto">自动识别</SelectItem>
                   <SelectItem value="domain">域名</SelectItem>
-                  <SelectItem value="ip" disabled>IP（暂不支持）</SelectItem>
-                  <SelectItem value="asn" disabled>ASN（暂不支持）</SelectItem>
+                  <SelectItem value="ip">IP</SelectItem>
+                  <SelectItem value="asn">ASN</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -218,7 +215,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
               )}
             </Button>
           </div>
-          
+
           {query.trim() && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>检测到类型:</span>
