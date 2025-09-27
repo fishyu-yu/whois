@@ -54,49 +54,10 @@ html, body {
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}
-
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
   --transition-duration: 280ms;
   --transition-duration-fast: 180ms;
   --transition-ease: linear;
@@ -199,17 +160,125 @@ html, body {
     padding-right: 1rem;
   }
   
+  /* 移动端毛玻璃效果优化 */
+  .glass-card {
+    backdrop-filter: blur(8px) saturate(1.2);
+    -webkit-backdrop-filter: blur(8px) saturate(1.2);
+    padding: 1rem;
+  }
+  
+  .glass-nav {
+    backdrop-filter: blur(6px) saturate(1.1);
+    -webkit-backdrop-filter: blur(6px) saturate(1.1);
+    padding: 0.75rem 1rem;
+  }
+  
+  .glass-panel {
+    backdrop-filter: blur(6px) saturate(1.15);
+    -webkit-backdrop-filter: blur(6px) saturate(1.15);
+  }
+  
   .card {
     margin-bottom: 1rem;
   }
-  
+
   .button-group {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .button-group > * {
     width: 100%;
+  }
+}
+
+/* 平板设备优化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .glass-card {
+    backdrop-filter: blur(10px) saturate(1.25);
+    -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  }
+  
+  .glass-nav {
+    backdrop-filter: blur(8px) saturate(1.2);
+    -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  }
+}
+
+/* 大屏设备优化 */
+@media (min-width: 1440px) {
+  .glass-card {
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  }
+  
+  .glass-nav {
+    backdrop-filter: blur(14px) saturate(1.35);
+    -webkit-backdrop-filter: blur(14px) saturate(1.35);
+  }
+  
+  .glass-panel {
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .glass-hover:hover {
+    transform: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+  
+  .glass-active:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* 高分辨率屏幕优化 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .glass-card,
+  .glass-nav,
+  .glass-panel {
+    border-width: 0.5px;
+  }
+}
+
+/* 低性能设备优化 */
+@media (prefers-reduced-motion: reduce) {
+  .glass-enter,
+  .glass-fade-in,
+  .glass-float {
+    animation: none;
+  }
+  
+  .glass-hover {
+    transition: none;
+  }
+  
+  .glass-hover:hover {
+    transform: none;
+  }
+  
+  .animate-soft-enter { 
+    animation: none; 
+  }
+  
+  .transition-base { 
+    transition: none; 
+  }
+}
+
+/* 高对比度模式适配 */
+@media (prefers-contrast: high) {
+  .glass-panel,
+  .glass-card,
+  .glass-nav {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: hsl(var(--background));
+    border: 2px solid hsl(var(--border));
   }
 }
 
@@ -226,60 +295,197 @@ html, body {
 }
 
 .animate-soft-enter {
-  animation: softEnter var(--transition-duration) var(--transition-ease) both;
+  animation: softEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* 统一过渡基类（颜色、阴影等） */
+/* 毛玻璃进入动画 */
+@keyframes glassIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    backdrop-filter: blur(16px);
+  }
+}
+
+.animate-glass-in {
+  animation: glassIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 基础过渡类 */
 .transition-base {
-  transition-duration: var(--transition-duration);
-  transition-timing-function: var(--transition-ease);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 降低动效（无障碍与性能） */
-@media (prefers-reduced-motion: reduce) {
-  .animate-soft-enter { animation: none; }
-  .transition-base { transition: none; }
+/* ========== 毛玻璃效果系统 ========== */
+
+/* 基础毛玻璃面板 */
+.glass-panel {
+  backdrop-filter: blur(12px) saturate(1.35);
+  -webkit-backdrop-filter: blur(12px) saturate(1.35);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Subtle, consistent micro-interactions and rounded corners */
-[data-slot="button"] {
-  border-radius: var(--radius-md);
-  box-shadow: none;
-  will-change: transform;
-  transition: transform 150ms ease, box-shadow 200ms ease, background-color var(--transition-duration) var(--transition-ease), color var(--transition-duration) var(--transition-ease);
-}
-[data-slot="button"]:hover { transform: translateY(-1px); }
-[data-slot="button"]:active { transform: translateY(0); }
-[data-slot="button"]:focus-visible { outline: none; box-shadow: 0 0 0 4px hsl(var(--ring) / 0.22); }
-
-[data-slot="card"] {
-  border-radius: var(--radius-lg);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-  transition: transform 200ms ease, box-shadow 250ms ease, background-color var(--transition-duration) var(--transition-ease);
-}
-[data-slot="card"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-}
-[data-slot="card-header"], [data-slot="card-content"], [data-slot="card-footer"] {
-  padding-left: 2rem;
-  padding-right: 2rem;
-}
-[data-slot="card-title"] { font-size: 1.0625rem; letter-spacing: -0.01em; }
-
-[data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"] {
-  border-radius: var(--radius-md);
-  height: 2.5rem; /* 40px for clearer touch target */
-  box-shadow: none;
+/* 深色模式下的毛玻璃效果 */
+.dark .glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-/* 移动端安全区工具类：让顶部/底部在刘海、Home 指示条下也保持舒适留白 */
-@supports (padding: env(safe-area-inset-top)) {
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
+/* 不支持backdrop-filter的降级方案 */
+@supports not (backdrop-filter: blur(12px)) {
+  .glass-panel {
+    background-color: hsl(var(--background) / 0.85);
   }
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+  .dark .glass-panel {
+    background-color: hsl(var(--background) / 0.9);
   }
 }
-/* Prefer subtle scrollbars and transitions already defined below */
+
+/* 毛玻璃卡片变体 */
+.glass-card {
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.08),
+    0 6px 20px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.dark .glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 6px 20px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* 毛玻璃导航栏 */
+.glass-nav {
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 2px 12px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-nav {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 2px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* 毛玻璃加载遮罩 */
+.glass-overlay {
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-overlay {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ========== 动画系统 ========== */
+
+/* 毛玻璃进入动画 */
+@keyframes glassSlideIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(12px) scale(0.98);
+    filter: blur(4px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes glassFadeIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.96);
+    backdrop-filter: blur(0px);
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1);
+    backdrop-filter: blur(16px);
+  }
+}
+
+@keyframes glassFloat {
+  0%, 100% { 
+    transform: translateY(0px) scale(1);
+  }
+  50% { 
+    transform: translateY(-2px) scale(1.01);
+  }
+}
+
+/* 动画类 */
+.glass-enter {
+  animation: glassSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.glass-fade-in {
+  animation: glassFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.glass-float {
+  animation: glassFloat 3s ease-in-out infinite;
+}
+
+/* 悬停效果 */
+.glass-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-hover:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-hover:hover {
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* 点击效果 */
+.glass-active {
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-active:active {
+  transform: translateY(-1px) scale(0.98);
+}

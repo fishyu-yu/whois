@@ -198,77 +198,77 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <div className="glass-card glass-enter glass-hover w-full">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
-             <CardTitle className="text-xl">查询结果</CardTitle>
-             <CardDescription className="flex items-center gap-2 mt-2">
+             <h2 className="text-xl font-semibold">查询结果</h2>
+             <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                <Clock className="h-4 w-4" />
                {new Date(result.timestamp || data.timestamp).toLocaleString('zh-CN')}
-             </CardDescription>
+             </p>
            </div>
            <div className="flex items-center gap-2">
-             <Badge variant="secondary" className="flex items-center gap-1">
+             <Badge variant="secondary" className="flex items-center gap-1 glass-panel">
                {getDataSourceIcon(source)}
                {getDataSourceLabel(source)}
              </Badge>
            </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* 查询信息 */}
-        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-          <Globe className="h-4 w-4" />
-          <span className="font-medium">查询目标:</span>
-          <code className="bg-background px-2 py-1 rounded text-sm">{data.query}</code>
-        </div>
 
-        {/* 错误处理 */}
-        {result.error && (
-          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <p className="text-destructive font-medium">查询失败</p>
-            <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
+        <div className="space-y-6">
+          {/* 查询信息 */}
+          <div className="glass-panel glass-enter flex items-center gap-2 p-3 rounded-lg">
+            <Globe className="h-4 w-4" />
+            <span className="font-medium">查询目标:</span>
+            <code className="glass-panel px-2 py-1 rounded text-sm">{data.query}</code>
           </div>
-        )}
 
-        {/* 成功结果 */}
-        {!result.error && (parsed || raw) ? (
-          <div className="space-y-4">
-            {/* 解析后的数据 */}
-            {parsed && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Server className="h-4 w-4" />
-                  域名信息
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {normalized.domain && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">域名</label>
-                      <p className="font-mono text-sm bg-muted p-2 rounded">{normalized.domain}</p>
+          {/* 错误处理 */}
+          {result.error && (
+            <div className="glass-panel glass-enter p-4 border-destructive/20 bg-destructive/5 rounded-lg">
+              <p className="text-destructive font-medium">查询失败</p>
+              <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
+            </div>
+          )}
+
+          {/* 成功结果 */}
+          {!result.error && (parsed || raw) ? (
+            <div className="space-y-4">
+              {/* 解析后的数据 */}
+              {parsed && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Server className="h-4 w-4" />
+                    域名信息
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {normalized.domain && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground">域名</label>
+                        <p className="font-mono text-sm glass-panel p-2 rounded">{normalized.domain}</p>
                     </div>
                   )}
                   
                   {normalized.registrar && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">注册商</label>
-                      <p className="text-sm bg-muted p-2 rounded">{normalized.registrar}</p>
+                      <p className="text-sm glass-panel p-2 rounded">{normalized.registrar}</p>
                     </div>
                   )}
                   
                   {normalized.registrationDate && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">注册日期</label>
-                      <p className="text-sm bg-muted p-2 rounded">{normalized.registrationDate}</p>
+                      <p className="text-sm glass-panel p-2 rounded">{normalized.registrationDate}</p>
                     </div>
                   )}
 
                   {normalized.expirationDate && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">到期日期</label>
-                      <p className="text-sm bg-muted p-2 rounded">{normalized.expirationDate}</p>
+                      <p className="text-sm glass-panel p-2 rounded">{normalized.expirationDate}</p>
                     </div>
                   )}
 
@@ -277,7 +277,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                       <label className="text-sm font-medium text-muted-foreground">名称服务器</label>
                       <div className="space-y-2">
                         {normalized.nameServers.map((ns: string, idx: number) => (
-                          <p key={idx} className="text-sm bg-muted p-2 rounded">{ns}</p>
+                          <p key={idx} className="text-sm glass-panel p-2 rounded">{ns}</p>
                         ))}
                       </div>
                     </div>
@@ -291,11 +291,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                           {sortedStatuses.map((s, idx) => (
                             <Tooltip key={`${s.code}-${idx}`}>
                               <TooltipTrigger asChild>
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs glass-panel">
                                   {s.code}
                                 </Badge>
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className="glass-panel">
                                 <p>{s.label}</p>
                               </TooltipContent>
                             </Tooltip>
@@ -308,7 +308,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
                 {/* 联系人信息 */}
                 {(() => {
-                  // 根据域名判断是否为 .CN，以便调整“组织”字段标签为“注册人/机构”
+                  // 根据域名判断是否为 .CN，以便调整"组织"字段标签为"注册人/机构"
                   const currentDomain = normalized.domain || (typeof parsed?.domain_name === 'string' ? parsed?.domain_name : '')
                   const isCN = (currentDomain || '').toLowerCase().endsWith('.cn')
 
@@ -359,7 +359,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                         <label className="text-sm font-medium text-muted-foreground">{title}</label>
                         <div className="space-y-2">
                           {fields.map((f, idx) => (
-                            <p key={idx} className="text-sm bg-muted p-2 rounded">
+                            <p key={idx} className="text-sm glass-panel p-2 rounded">
                               <span className="font-medium mr-2">{f.label}</span>
                               {f.value}
                             </p>
@@ -398,11 +398,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     {sortedStatuses.map((s, idx) => (
                       <Tooltip key={`overview-${s.code}-${idx}`}>
                         <TooltipTrigger asChild>
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs glass-panel">
                             {s.code}
                           </Badge>
                         </TooltipTrigger>
-                        <TooltipContent>
+                        <TooltipContent className="glass-panel">
                           <p>{s.label}</p>
                         </TooltipContent>
                       </Tooltip>
@@ -421,12 +421,13 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => copyToClipboard(raw)}
+                    className="glass-active glass-hover"
                   >
                     <Copy className="h-4 w-4 mr-1" />
                     复制
                   </Button>
                 </div>
-                <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
+                <pre className="glass-panel p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
                   {raw}
                 </pre>
 
@@ -446,16 +447,17 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                             onClick={() => setShowRegistrarRaw(!showRegistrarRaw)}
                             aria-expanded={showRegistrarRaw}
                             aria-controls="registrar-rdap-raw"
+                            className="glass-active"
                           >
                             {showRegistrarRaw ? "收起" : "展开"}
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registrarRaw, null, 2))}>
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registrarRaw, null, 2))} className="glass-active glass-hover">
                             <Copy className="h-4 w-4 mr-1" />复制
                           </Button>
                         </div>
                       </div>
                       {showRegistrarRaw && (
-                        <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
+                        <pre className="glass-panel p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
                           {JSON.stringify(registrarRaw, null, 2)}
                         </pre>
                       )}
@@ -478,16 +480,17 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                             onClick={() => setShowRegistryRaw(!showRegistryRaw)}
                             aria-expanded={showRegistryRaw}
                             aria-controls="registry-rdap-raw"
+                            className="glass-active"
                           >
                             {showRegistryRaw ? "收起" : "展开"}
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registryRaw, null, 2))}>
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registryRaw, null, 2))} className="glass-active glass-hover">
                             <Copy className="h-4 w-4 mr-1" />复制
                           </Button>
                         </div>
                       </div>
                       {showRegistryRaw && (
-                        <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
+                        <pre className="glass-panel p-4 rounded-lg text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
                           {JSON.stringify(registryRaw, null, 2)}
                         </pre>
                       )}
@@ -499,17 +502,18 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
           </div>
         ) : null}
 
-        <div className="flex items-center gap-2 pt-4 border-t">
-          <Button variant="outline" size="sm" onClick={onExport}>
+        <div className="glass-panel glass-enter flex items-center gap-2 pt-4 border-t">
+          <Button variant="outline" size="sm" onClick={onExport} className="glass-active glass-hover">
             <Download className="h-4 w-4 mr-1" />
             导出
           </Button>
-          <Button variant="outline" size="sm" onClick={onShare}>
+          <Button variant="outline" size="sm" onClick={onShare} className="glass-active glass-hover">
             <Share2 className="h-4 w-4 mr-1" />
             分享
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
+  </div>
   )
 }

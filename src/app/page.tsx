@@ -155,11 +155,11 @@ export default function Home() {
       {/* 头部导航（整体居中、对称） */}
       <header className="safe-top">
         <div className="container mx-auto px-4">
-          <div className="rounded-[var(--radius-lg)] border bg-background/60 dark:bg-background/40 backdrop-blur supports-[backdrop-filter]:bg-background/40 supports-[backdrop-filter]:dark:bg-background/30 shadow-sm dark:shadow-md px-4 py-5 md:py-6">
+          <div className="glass-nav glass-fade-in glass-hover rounded-[var(--radius-lg)] px-4 py-5 md:py-6">
             <div className="flex flex-col items-center gap-3">
               <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
               <div className="flex items-center justify-center gap-2">
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild className="glass-active">
                   <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
                     <Github className="h-4 w-4 mr-1" />
                     GitHub
@@ -178,12 +178,15 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* 左侧：搜索与结果（更突出，占两列） */}
             <div className="md:col-span-2">
-              <Card className="w-full shadow-md rounded-xl">
-                <CardContent className="space-y-6 relative">
+              <div className="glass-card glass-enter glass-hover w-full shadow-md rounded-xl relative overflow-hidden">
+                <div className="space-y-6 relative p-6">
                   {/* 卡片级加载遮罩 */}
                   {loading && (
-                    <div className="absolute inset-0 border border-border/40 bg-background/45 supports-[backdrop-filter]:bg-background/30 backdrop-blur-md shadow-sm flex items-center justify-center rounded-xl z-10 transition-[opacity,filter] duration-300" aria-hidden>
-                      <div className="flex items-center gap-2 text-sm">
+                    <div
+                      className="absolute inset-0 rounded-xl z-20 glass-overlay glass-fade-in flex items-center justify-center"
+                      aria-hidden
+                    >
+                      <div className="flex items-center gap-2 text-sm backdrop-blur-sm bg-background/20 px-4 py-2 rounded-full border border-white/20">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground"></div>
                         正在查询，请稍候...
                       </div>
@@ -191,7 +194,7 @@ export default function Home() {
                   )}
                   <WhoisForm onSubmit={handleQuery} loading={loading} />
                   {!currentResult && (
-                    <div className="p-4 rounded-lg border bg-muted/30 text-sm text-muted-foreground">
+                    <div className="p-4 rounded-lg glass-panel text-sm text-muted-foreground glass-enter">
                       请输入域名进行查询，支持自动识别类型并展示结构化结果。
                     </div>
                   )}
@@ -200,51 +203,67 @@ export default function Home() {
                     onExport={() => currentResult && handleExport(currentResult)}
                     onShare={() => currentResult && handleShare(currentResult)}
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
             {/* 右侧：历史记录（粘性侧栏） */}
             <div className="md:col-span-1">
               <div className="md:sticky md:top-6">
-                <Card className="w-full">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+                <div className="glass-card glass-enter glass-hover w-full">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        <CardTitle className="text-base">查询历史</CardTitle>
+                        <h2 className="text-base font-semibold">查询历史</h2>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={clearHistory} disabled={history.length === 0 || loading} aria-disabled={history.length === 0 || loading}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={clearHistory} 
+                        disabled={history.length === 0 || loading} 
+                        aria-disabled={history.length === 0 || loading}
+                        className="glass-active"
+                      >
                         <Trash2 className="h-4 w-4 mr-1" />清空
                       </Button>
                     </div>
-                    <CardDescription>仅在本地浏览器保存，点击可快速复查</CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">仅在本地浏览器保存，点击可快速复查</p>
+                    
                     {history.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">暂无历史记录</div>
+                      <div className="text-sm text-muted-foreground glass-panel p-4 rounded-lg text-center">
+                        暂无历史记录
+                      </div>
                     ) : (
                       <div className="flex flex-col gap-2">
                         {history.map((h, idx) => (
-                          <div key={`${h.query}-${h.timestamp}-${idx}`} className="flex items-center justify-between gap-3 p-2 rounded-md border hover:bg-muted/50">
-                            <button
-                              className="text-left flex-1"
-                              onClick={() => handleQuery(h.query, h.type)}
-                              disabled={loading}
-                              aria-label={`重新查询 ${h.query}`}
-                            >
-                              <div className="font-mono text-sm">{h.query}</div>
-                              <div className="text-xs text-muted-foreground">{new Date(h.timestamp).toLocaleString('zh-CN')}</div>
-                            </button>
-                            <Button variant="outline" size="sm" onClick={() => handleQuery(h.query, h.type)} disabled={loading}>
-                              重新查询
-                            </Button>
+                          <div key={`${h.query}-${h.timestamp}-${idx}`} className="glass-panel glass-hover glass-active rounded-md p-3 transition-all duration-300">
+                            <div className="flex items-center justify-between gap-3">
+                              <button
+                                className="text-left flex-1"
+                                onClick={() => handleQuery(h.query, h.type)}
+                                disabled={loading}
+                                aria-label={`重新查询 ${h.query}`}
+                              >
+                                <div className="font-mono text-sm font-medium">{h.query}</div>
+                                <div className="text-xs text-muted-foreground mt-1">{new Date(h.timestamp).toLocaleString('zh-CN')}</div>
+                              </button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleQuery(h.query, h.type)} 
+                                disabled={loading}
+                                className="glass-active shrink-0"
+                              >
+                                重新查询
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -254,7 +273,7 @@ export default function Home() {
        {/* 页脚 */}
       <footer className="mt-8">
         <div className="container mx-auto px-4">
-          <div className="rounded-[var(--radius-lg)] border px-4 py-6 text-center text-sm text-muted-foreground space-y-3 safe-bottom bg-background/60 dark:bg-background/40 backdrop-blur supports-[backdrop-filter]:bg-background/40 supports-[backdrop-filter]:dark:bg-background/30 shadow-sm dark:shadow-md">
+          <div className="glass-nav glass-fade-in glass-hover rounded-[var(--radius-lg)] px-4 py-6 text-center text-sm text-muted-foreground space-y-3 safe-bottom">
             <div className="space-y-1">
               <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
             </div>
@@ -263,7 +282,7 @@ export default function Home() {
                 href="https://github.com/fishyu-yu/whois" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                className="flex items-center gap-1 hover:text-foreground transition-colors glass-active px-2 py-1 rounded"
               >
                 <Github className="h-4 w-4" />
                 GitHub 项目
