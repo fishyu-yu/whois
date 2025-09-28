@@ -201,8 +201,10 @@ const rdapCache = new Map<string, { data: RDAPResponse; rdapSource?: 'registrar'
 async function getRDAPServersAsync(domain: string): Promise<string[]> {
   await ensureBootstrapLoaded();
   const tld = getTLD(domain);
-  const servers = dynamicRdapMap ? dynamicRdapMap[tld] : undefined;
-  return Array.isArray(servers) ? servers : [];
+  const dynamic = dynamicRdapMap ? dynamicRdapMap[tld] : undefined;
+  const staticBase = RDAP_SERVERS[tld as keyof typeof RDAP_SERVERS] || null;
+  const servers = Array.isArray(dynamic) && dynamic.length > 0 ? dynamic : (staticBase ? [staticBase] : []);
+  return servers;
 }
 
 /**
@@ -388,7 +390,9 @@ export async function queryEntityRDAP(handle: string): Promise<RDAPResponse | nu
  */
 export function isRDAPSupported(domain: string): boolean {
   const tld = getTLD(domain);
-  return !!(dynamicRdapMap && dynamicRdapMap[tld] && dynamicRdapMap[tld].length > 0);
+  const hasDynamic = !!(dynamicRdapMap && dynamicRdapMap[tld] && dynamicRdapMap[tld].length > 0);
+  const hasStatic = !!(RDAP_SERVERS[tld as keyof typeof RDAP_SERVERS]);
+  return hasDynamic || hasStatic;
 }
 
 export function getSupportedTLDs(): string[] {

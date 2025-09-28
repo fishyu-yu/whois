@@ -30,7 +30,9 @@ export default function DomainPage() {
 
   const routeParams = useParams()
   const domainParam = routeParams?.domain as string | string[] | undefined
-  const domain = Array.isArray(domainParam) ? domainParam.join("/") : domainParam
+  const domainSlug = Array.isArray(domainParam) ? domainParam.join("/") : domainParam
+  // 为兼容旧代码的冗余引用，提供别名，避免运行时 ReferenceError
+  const domain = domainSlug
 
   // 在地址栏中更新路径但不触发页面导航
   const updateURLPath = (q: string) => {
@@ -124,13 +126,13 @@ export default function DomainPage() {
 
   // 首次进入 /[domain]，自动发起查询（默认按域名类型）
   useEffect(() => {
-    const q = decodeURIComponent(domain || "")
+    const q = decodeURIComponent(domainSlug || "")
     if (q) {
       // 初始访问无需再 pushState，当前路径已是 /q
       setTimeout(() => handleQuery(q, "domain"), 0)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domain])
+  }, [domainSlug])
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

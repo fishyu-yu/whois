@@ -482,6 +482,11 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Whois查询错误:', error)
 
+    const msg = String(error?.message || '')
+    const isNotSupported = msg.includes('暂不支持')
+    const isUnregistered = msg.includes('未注册')
+    const status = isUnregistered ? 404 : (isNotSupported ? 400 : 500)
+
     return NextResponse.json(
       {
         query: requestBody?.query || 'unknown',
@@ -491,7 +496,7 @@ export async function POST(request: NextRequest) {
         data: null,
         timestamp: Date.now(),
       },
-      { status: 500 }
+      { status }
     )
   }
 }
@@ -516,6 +521,10 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Whois查询错误:", error)
+    const msg = String(error?.message || '')
+    const isNotSupported = msg.includes('暂不支持')
+    const isUnregistered = msg.includes('未注册')
+    const status = isUnregistered ? 404 : (isNotSupported ? 400 : 500)
     
     return NextResponse.json(
       { 
@@ -523,7 +532,7 @@ export async function GET(request: NextRequest) {
         details: error.message,
         timestamp: new Date().toISOString()
       },
-      { status: 500 }
+      { status }
     )
   }
 }

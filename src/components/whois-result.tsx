@@ -21,10 +21,10 @@ import { useState } from "react"
 const STATUS_INFO: Record<string, { label: string; severity: number }> = {
   ok: { label: "正常", severity: 0 },
   active: { label: "活跃", severity: 0 },
-  clientHold: { label: "客户端暂停解析", severity: 3 },
-  serverHold: { label: "服务端暂停解析", severity: 3 },
-  redemptionPeriod: { label: "赎回期", severity: 3 },
-  pendingDelete: { label: "等待删除", severity: 3 },
+  clienthold: { label: "客户端暂停解析", severity: 3 },
+  serverhold: { label: "服务端暂停解析", severity: 3 },
+  redemptionperiod: { label: "赎回期", severity: 3 },
+  pendingdelete: { label: "等待删除", severity: 3 },
   inactive: { label: "未激活", severity: 2 },
   clientDeleteProhibited: { label: "客户端禁止删除", severity: 1 },
   serverDeleteProhibited: { label: "服务端禁止删除", severity: 1 },
@@ -32,7 +32,7 @@ const STATUS_INFO: Record<string, { label: string; severity: number }> = {
   serverUpdateProhibited: { label: "服务端禁止更新", severity: 1 },
   clientRenewProhibited: { label: "客户端禁止续费", severity: 1 },
   serverRenewProhibited: { label: "服务端禁止续费", severity: 1 },
-  clientTransferProhibited: { label: "客户端禁止转移", severity: 2 },
+  clienttransferprohibited: { label: "客户端禁止转移", severity: 2 },
   serverTransferProhibited: { label: "服务端禁止转移", severity: 2 },
   pendingCreate: { label: "等待创建", severity: 1 },
   pendingRenew: { label: "等待续费", severity: 1 },
@@ -45,6 +45,17 @@ const STATUS_INFO: Record<string, { label: string; severity: number }> = {
   transferPeriod: { label: "转移宽限期", severity: 0 },
   locked: { label: "锁定", severity: 2 },
 }
+
+// 规范化状态码：移除所有空格/连字符/下划线并转为小写，便于字典匹配
+const canonicalizeStatus = (code: string) => (code || "")
+  .trim()
+  .replace(/[\s\-_]+/g, "")
+  .toLowerCase()
+
+// 基于 STATUS_INFO 构建规范化索引（支持大小写与空格差异的输入）
+const STATUS_INFO_CANONICAL: Record<string, { label: string; severity: number }> = Object.fromEntries(
+  Object.entries(STATUS_INFO).map(([key, info]) => [canonicalizeStatus(key), info])
+)
 
 /**
  * WhoisResult 组件的属性
@@ -65,10 +76,11 @@ interface WhoisResultProps {
  * @returns 包含 code、label、severity 的对象
  */
 const getStatusInfo = (code: string) => {
-  const normalizedCode = (code || "").trim()
-  const info = STATUS_INFO[normalizedCode]
-  if (info) return { code: normalizedCode, ...info }
-  return { code: normalizedCode, label: "未知状态", severity: 1 }
+  const codeNoSpaces = (code || "").trim().replace(/[\s\-_]+/g, "")
+  const canonical = canonicalizeStatus(code)
+  const info = STATUS_INFO_CANONICAL[canonical]
+  if (info) return { code: codeNoSpaces, ...info }
+  return { code: codeNoSpaces, label: "未知状态", severity: 1 }
 }
 
 /**
