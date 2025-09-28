@@ -310,3 +310,6 @@ export default function Home() {
     </div>
   )
 }
+
+// 在地址栏中更新路径但不触发页面导航
+const APP_VERSION = "v0.10.0"
