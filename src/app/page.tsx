@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Github, Clock, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface WhoisData {
   query: string
@@ -27,6 +28,7 @@ export default function Home() {
   const [currentResult, setCurrentResult] = useState<WhoisData | null>(null)
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const router = useRouter()
 
   useEffect(() => {
     try {
@@ -55,55 +57,8 @@ export default function Home() {
   }
 
   const handleQuery = async (query: string, type: string, dataSource?: string) => {
-    setLoading(true)
-    try {
-      const response = await fetch("/api/whois", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, type, dataSource: "rdap" }),
-      });
-
-      if (!response.ok) {
-        let message = "查询失败"
-        try {
-          const err = await response.json()
-          message = err?.error || err?.details || message
-        } catch {}
-
-        const errorData: WhoisData = {
-          query,
-          type,
-          result: { error: message },
-          timestamp: new Date().toISOString(),
-        }
-        setCurrentResult(errorData)
-        addHistory({ query, type, timestamp: errorData.timestamp })
-        return
-      }
-
-      const result = await response.json()
-      const whoisData: WhoisData = {
-        query,
-        type,
-        result: result.data,
-        timestamp: new Date().toISOString(),
-      }
-
-      setCurrentResult(whoisData)
-      addHistory({ query, type, timestamp: whoisData.timestamp })
-    } catch (error) {
-      console.error("查询错误:", error)
-      const errorData: WhoisData = {
-        query,
-        type,
-        result: { error: "查询失败，请稍后重试" },
-        timestamp: new Date().toISOString(),
-      }
-      setCurrentResult(errorData)
-      addHistory({ query, type, timestamp: errorData.timestamp })
-    } finally {
-      setLoading(false)
-    }
+    // 点击查询时，导航到 /${查询的域名}，由动态路由页承担实际查询
+    router.push(`/${encodeURIComponent(query)}`)
   }
 
   const handleExport = (data: WhoisData) => {
@@ -129,20 +84,20 @@ export default function Home() {
   }
 
   const handleShare = async (data: WhoisData) => {
+    const shareUrl = new URL(`/${encodeURIComponent(data.query)}`, window.location.origin).toString()
     if (navigator.share) {
       try {
         await navigator.share({
           title: `Whois 查询结果 - ${data.query}`,
           text: `查询对象: ${data.query}\n类型: ${data.type}\n时间: ${new Date(data.timestamp).toLocaleString()}`,
-          url: window.location.href,
+          url: shareUrl,
         })
       } catch (error) {
         console.error("分享失败:", error)
       }
     } else {
-      // 降级到复制链接
       try {
-        await navigator.clipboard.writeText(window.location.href)
+        await navigator.clipboard.writeText(shareUrl)
         alert("链接已复制到剪贴板")
       } catch (error) {
         console.error("复制失败:", error)
