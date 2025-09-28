@@ -107,6 +107,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     registrar: parsed?.registrar || parsed?.sponsoring_registrar,
     registrationDate: parsed?.registrationDate || parsed?.creation_date || parsed?.registration_time,
     expirationDate: parsed?.expirationDate || parsed?.registry_expiry_date || parsed?.expiration_time,
+    updatedDate: parsed?.updated_date || parsed?.update_date || parsed?.last_update || parsed?.last_updated,
     nameServers: (() => {
       const ns = parsed?.nameServers || parsed?.name_server || parsed?.name_servers
       if (!ns) return []
@@ -265,6 +266,13 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     </div>
                   )}
 
+                  {normalized.updatedDate && (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-muted-foreground">更新时间</label>
+                      <p className="text-sm glass-panel p-2 rounded">{normalized.updatedDate}</p>
+                    </div>
+                  )}
+
                   {normalized.expirationDate && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">到期日期</label>
@@ -272,6 +280,23 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     </div>
                   )}
 
+                  {(() => {
+                    // 计算剩余到期天数
+                    const exp = normalized.expirationDate
+                    if (!exp) return null
+                    const expDate = new Date(String(exp))
+                    if (isNaN(expDate.getTime())) return null
+                    const now = new Date()
+                    const diffMs = expDate.getTime() - now.getTime()
+                    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                    const display = days >= 0 ? `${days} 天` : `已过期 ${Math.abs(days)} 天`
+                    return (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground">剩余到期天数</label>
+                        <p className="text-sm glass-panel p-2 rounded">{display}</p>
+                      </div>
+                    )
+                  })()}
                   {normalized.nameServers && normalized.nameServers.length > 0 && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">名称服务器</label>

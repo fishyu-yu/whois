@@ -290,7 +290,7 @@ export default function Home() {
               <span className="hidden sm:inline">•</span>
               <span>基于 Next.js 和 Shadcn UI 构建</span>
               <span className="hidden sm:inline">•</span>
-              <span>Licensed under AGPL-3.0</span>
+              <span>MIT Licensed</span>
             </div>
           </div>
         </div>

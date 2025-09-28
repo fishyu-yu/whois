@@ -68,6 +68,13 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
     
     // 对于域名查询，根据指定的数据源进行查询
     if (type === "domain") {
+      // 提前判断是否支持：既无RDAP又无WHOIS服务器，则提示不支持
+      const rdapSupported = isRDAPSupported(query)
+      const hasWhoisServer = !!getDomainWhoisServer(query)
+      if (!rdapSupported && !hasWhoisServer) {
+        throw new Error("暂不支持该后缀")
+      }
+
       // 根据数据源选择查询方式
       if (!dataSource || dataSource === "rdap") {
         // 默认使用 RDAP，失败或无结果则回退到 WHOIS
@@ -90,6 +97,9 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
             }
           }
         } catch (e: any) {
+          if (e?.message === 'RDAP_NOT_FOUND') {
+            throw new Error('域名未注册')
+          }
           console.warn(`RDAP 查询失败，回退到 WHOIS: ${e?.message || e}`)
         }
 
@@ -141,7 +151,10 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
               rdapRegistrarRaw: (rdapData as any).registrarRaw || null
             }
           }
-        } catch (rdapError) {
+        } catch (rdapError: any) {
+          if (rdapError?.message === 'RDAP_NOT_FOUND') {
+            throw new Error('域名未注册')
+          }
           console.error(`RDAP查询失败，回退到WHOIS: ${rdapError}`)
         }
         
@@ -160,9 +173,18 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
 
     return result
   } catch (error: any) {
-    // 如果系统没有whois命令，使用模拟数据
-    if (error.message.includes("whois") && error.message.includes("not found")) {
-      return getMockWhoisData(query, type)
+    // 如果系统没有 whois 命令，不再返回模拟数据，改为结构化错误
+    if (error?.message?.includes("whois") && error?.message?.includes("not found")) {
+      if (type === "domain") {
+        const validation = validateDomain(query)
+        const tld = (validation as DomainValidationResult)?.tld || null
+        const rdapSupported = tld ? isRDAPSupported(tld) : false
+        const hasWhoisServer = !!getDomainWhoisServer(query)
+        if (!rdapSupported && !hasWhoisServer) {
+          throw new Error(`暂不支持该后缀（.${tld || '未知'}）`)
+        }
+      }
+      throw new Error("系统未安装 whois，请使用 RDAP 或安装 whois 工具后重试")
     }
     throw error
   }
@@ -195,6 +217,11 @@ async function performDomainWhoisWithPriority(query: string): Promise<any> {
       registryStdout = stdout
     }
 
+    // 未注册判断（注册局原文）
+    if (isDomainUnregisteredFromWhois(registryStdout)) {
+      throw new Error('域名未注册')
+    }
+
     registryResult = {
       raw: registryStdout,
       parsed: parseWhoisResult(registryStdout, "domain"),
@@ -207,6 +234,10 @@ async function performDomainWhoisWithPriority(query: string): Promise<any> {
     if (registrarServer) {
       try {
         const registrarStdout = await tcpWhoisQuery(registrarServer, query)
+        // 未注册判断（注册商原文）
+        if (isDomainUnregisteredFromWhois(registrarStdout)) {
+          throw new Error('域名未注册')
+        }
         registrarResult = {
           raw: registrarStdout,
           parsed: parseWhoisResult(registrarStdout, "domain"),
@@ -217,6 +248,9 @@ async function performDomainWhoisWithPriority(query: string): Promise<any> {
         console.warn(`TCP WHOIS 注册商查询失败，尝试系统whois: ${registrarTcpErr}`)
         try {
           const { stdout: registrarStdout } = await execAsync(`whois -h ${registrarServer} "${query}"`, { timeout: 15000, maxBuffer: 1024 * 1024 })
+          if (isDomainUnregisteredFromWhois(registrarStdout)) {
+            throw new Error('域名未注册')
+          }
           registrarResult = {
             raw: registrarStdout,
             parsed: parseWhoisResult(registrarStdout, "domain"),
@@ -267,6 +301,11 @@ async function performStandardWhoisQuery(query: string, type: string): Promise<a
 
   if (stderr && !stdout) {
     throw new Error(stderr)
+  }
+
+  // 未注册判断（标准WHOIS原文）
+  if (type === 'domain' && isDomainUnregisteredFromWhois(stdout)) {
+    throw new Error('域名未注册')
   }
 
   return {
@@ -348,71 +387,25 @@ function parseWhoisResult(raw: string, type: string): any {
 
   return parsed
 }
-
-// 模拟数据（用于演示）
-function getMockWhoisData(query: string, type: string): any {
-  const timestamp = new Date().toISOString()
-  
-  if (type === "domain") {
-    // 统一处理：所有模拟返回均显示“暂不支持该后缀”
-    return {
-      query,
-      type,
-      timestamp,
-      dataSource: "mock",
-      result: {
-        raw: `暂不支持该后缀 (${query})`,
-        parsed: {
-          domain_name: query.toUpperCase(),
-          status: "暂不支持该后缀"
-        }
-      }
-    }
-  }
-  
-  return {
-    query,
-    type,
-    timestamp,
-    dataSource: "mock",
-    result: {
-      raw: `暂不支持该后缀 (${query})`,
-      parsed: { query, type, status: "暂不支持该后缀" }
-    }
-  }
+// 新增：判断 WHOIS 原文是否表示未注册
+function isDomainUnregisteredFromWhois(raw: string): boolean {
+  const text = (raw || '').toLowerCase()
+  const patterns = [
+    'no match for',
+    'not found',
+    'no entries found',
+    'no data found',
+    'the queried object does not exist',
+    'status: available',
+    'domain available',
+    'no object found',
+    'available',
+    'not been registered'
+  ]
+  return patterns.some(p => text.includes(p))
 }
 
-// .cn域名专用模拟数据
-function getCNDomainMockData(query: string): any {
-  const timestamp = new Date().toISOString()
-  
-  return {
-    query,
-    type: "domain",
-    timestamp,
-    dataSource: "registry",
-    result: {
-      raw: `Domain Name: ${query.toLowerCase()}\nROID: 20030321s10001s00193214-cn\nDomain Status: ok\nRegistrant: 魏涛\nRegistrant/Organization: Registrant\nRegistrant Contact Email: 151026@qq.com\nSponsoring Registrar: 北京新网数码信息技术有限公司\nName Server: ns11.xincache.com\nName Server: ns12.xincache.com\nRegistration Time: 2003-03-21 22:42:05\nExpiration Time: 2026-03-21 22:42:05\nDNSSEC: unsigned`,
-      parsed: {
-        domain_name: query.toLowerCase(),
-        roid: "20030321s10001s00193214-cn",
-        domain_status: "ok",
-        registrant: "魏涛",
-        registrant_organization: "Registrant", // 新增：注册人/机构
-        registrant_contact_email: "151026@qq.com",
-        sponsoring_registrar: "北京新网数码信息技术有限公司",
-        name_server: [
-          "ns11.xincache.com",
-          "ns12.xincache.com"
-        ],
-        registration_time: "2003-03-21 22:42:05",
-        expiration_time: "2026-03-21 22:42:05",
-        dnssec: "unsigned"
-      }
-    }
-  }
-}
-
+// 模拟数据功能已删除
 export async function POST(request: NextRequest) {
   let requestBody: WhoisRequest | null = null
   let rawBody: string | null = null
