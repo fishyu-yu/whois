@@ -221,8 +221,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
           {/* 查询信息 */}
           <div className="glass-panel glass-enter flex items-center gap-2 p-3 rounded-[var(--radius-lg)]">
             <Globe className="h-4 w-4" />
-            <span className="font-medium">查询目标:</span>
-            <code className="glass-panel px-2 py-1 rounded text-sm">{data.query}</code>
+            <code className="glass-panel px-2 py-1 rounded text-sm break-all">{data.query}</code>
           </div>
 
           {/* 错误处理 */}

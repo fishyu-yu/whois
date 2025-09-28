@@ -209,7 +209,7 @@ export default function Home() {
 
             {/* 右侧：历史记录（粘性侧栏） */}
             <div className="md:col-span-1">
-              <div className="md:sticky md:top-6">
+              <div className="md:sticky md:top-6 sm:static">
                 <div className="glass-card glass-enter glass-hover w-full">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -238,14 +238,14 @@ export default function Home() {
                       <div className="flex flex-col gap-2">
                         {history.map((h, idx) => (
                           <div key={`${h.query}-${h.timestamp}-${idx}`} className="glass-panel glass-hover glass-active rounded-md p-3 transition-all duration-300">
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3">
                               <button
-                                className="text-left flex-1"
+                                className="text-left w-full sm:flex-1"
                                 onClick={() => handleQuery(h.query, h.type)}
                                 disabled={loading}
                                 aria-label={`重新查询 ${h.query}`}
                               >
-                                <div className="font-mono text-sm font-medium">{h.query}</div>
+                                <div className="font-mono text-sm font-medium break-all">{h.query}</div>
                                 <div className="text-xs text-muted-foreground mt-1">{new Date(h.timestamp).toLocaleString('zh-CN')}</div>
                               </button>
                               <Button 
@@ -253,7 +253,7 @@ export default function Home() {
                                 size="sm" 
                                 onClick={() => handleQuery(h.query, h.type)} 
                                 disabled={loading}
-                                className="glass-active shrink-0"
+                                className="glass-active shrink-0 w-full sm:w-auto"
                               >
                                 重新查询
                               </Button>
