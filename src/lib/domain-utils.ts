@@ -316,7 +316,10 @@ export function getDomainWhoisServer(domain: string): string | null {
     'info': 'whois.afilias.net',
     'biz': 'whois.neulevel.biz',
     'name': 'whois.nic.name',
-    'mobi': 'whois.dotmobiregistry.net'
+    'mobi': 'whois.dotmobiregistry.net',
+    // 新增：补充常见 gTLD 的 WHOIS 服务器
+    'xyz': 'whois.nic.xyz',
+    'asia': 'whois.nic.asia'
   };
 
   return gtldServers[tld] || null;

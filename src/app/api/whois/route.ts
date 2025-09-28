@@ -68,12 +68,13 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
     
     // 对于域名查询，根据指定的数据源进行查询
     if (type === "domain") {
-      // 提前判断是否支持：既无RDAP又无WHOIS服务器，则提示不支持
-      const rdapSupported = isRDAPSupported(query)
-      const hasWhoisServer = !!getDomainWhoisServer(query)
-      if (!rdapSupported && !hasWhoisServer) {
-        throw new Error("暂不支持该后缀")
-      }
+      // 取消提前“不支持后缀”判断，先尝试 RDAP（包含 IANA 引导），再按优先级回退到 WHOIS
+      // 原逻辑：
+      // const rdapSupported = isRDAPSupported(query)
+      // const hasWhoisServer = !!getDomainWhoisServer(query)
+      // if (!rdapSupported && !hasWhoisServer) {
+      //   throw new Error("暂不支持该后缀")
+      // }
 
       // 根据数据源选择查询方式
       if (!dataSource || dataSource === "rdap") {

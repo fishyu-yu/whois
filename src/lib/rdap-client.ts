@@ -105,7 +105,9 @@ const RDAP_SERVERS = {
   'xyz': 'https://rdap.centralnic.com/xyz',
   'top': 'https://rdap.nic.top',
   'online': 'https://rdap.centralnic.com/online',
-  'site': 'https://rdap.centralnic.com/site'
+  'site': 'https://rdap.centralnic.com/site',
+  // 新增 .asia 的 RDAP 端点（由 Identity Digital 提供）
+  'asia': 'https://rdap.identitydigital.services/rdap'
 };
 
 // IANA RDAP Bootstrap动态映射（优先级低于静态表，作为补充）
