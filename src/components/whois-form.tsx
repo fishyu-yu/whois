@@ -117,7 +117,6 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
   }
 
   return (
-    <div className="glass-card glass-enter glass-hover w-full">
       <div className="p-6">
         <div className="mb-4">
           <h2 className="text-xl sm:text-2xl font-semibold">Whois 查询</h2>
@@ -228,6 +227,5 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
           )}
         </form>
       </div>
-    </div>
   )
 }

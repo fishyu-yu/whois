@@ -211,7 +211,6 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
   }
 
   return (
-    <div className="glass-card glass-enter w-full rounded-soft">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -550,6 +549,5 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
         </div>
       </div>
     </div>
-  </div>
   )
 }

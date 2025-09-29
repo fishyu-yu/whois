@@ -182,7 +182,7 @@ export default function DomainPage() {
                   )}
                   <WhoisForm onSubmit={handleQuery} loading={loading} />
                   {!currentResult && (
-                    <div className="p-4 rounded-soft glass-panel textsm text-muted-foreground glass-enter">
+                    <div className="p-4 rounded-soft glass-panel text-sm text-muted-foreground glass-enter">
                       请输入域名进行查询，支持自动识别类型并展示结构化结果。
                     </div>
                   )}
