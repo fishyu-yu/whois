@@ -164,19 +164,19 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     switch (dataSource) {
       case 'rdap-registry':
       case 'registry':
-        return <Flag className="h-4 w-4" />
+        return <Flag className="ui-icon ui-icon-sm" />
       case 'rdap-registrar':
       case 'registrar':
-        return <User className="h-4 w-4" />
+        return <User className="ui-icon ui-icon-sm" />
       case 'rdap':
-        return <ExternalLink className="h-4 w-4" />
+        return <ExternalLink className="ui-icon ui-icon-sm" />
       case 'whois':
       case 'standard':
-        return <Server className="h-4 w-4" />
+        return <Server className="ui-icon ui-icon-sm" />
       case 'mock':
-        return <Globe className="h-4 w-4" />
+        return <Globe className="ui-icon ui-icon-sm" />
       default:
-        return <Globe className="h-4 w-4" />
+        return <Globe className="ui-icon ui-icon-sm" />
     }
   }
 
@@ -211,13 +211,13 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
   }
 
   return (
-    <div className="glass-card glass-enter glass-hover w-full">
+    <div className="glass-card glass-enter w-full rounded-soft">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
              <h2 className="text-xl font-semibold">查询结果</h2>
              <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-               <Clock className="h-4 w-4" />
+               <Clock className="ui-icon ui-icon-sm" />
                {new Date(result.timestamp || data.timestamp).toLocaleString('zh-CN')}
              </p>
            </div>
@@ -231,14 +231,14 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
         <div className="space-y-6">
           {/* 查询信息 */}
-          <div className="glass-panel glass-enter flex items-center gap-2 p-3 rounded-[var(--radius-lg)]">
-            <Globe className="h-4 w-4" />
+          <div className="glass-panel glass-enter flex items-center gap-2 p-3 rounded-soft">
+            <Globe className="ui-icon ui-icon-sm" />
             <code className="glass-panel px-2 py-1 rounded text-sm break-all">{data.query}</code>
           </div>
 
           {/* 错误处理 */}
           {result.error && (
-            <div className="glass-panel glass-enter p-4 border-destructive/20 bg-destructive/5 rounded-[var(--radius-lg)]">
+            <div className="glass-panel glass-enter p-4 border-destructive/20 bg-destructive/5 rounded-soft">
               <p className="text-destructive font-medium">查询失败</p>
               <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
             </div>
@@ -251,7 +251,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
               {parsed && (
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <Server className="h-4 w-4" />
+                    <Server className="ui-icon ui-icon-sm" />
                     域名信息
                   </h3>
                   
@@ -457,13 +457,13 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => copyToClipboard(raw)}
-                    className="glass-active glass-hover"
+                    className="glass-active glass-hover interactive"
                   >
-                    <Copy className="h-4 w-4 mr-1" />
+                    <Copy className="ui-icon ui-icon-sm ui-icon--before" />
                     复制
                   </Button>
                 </div>
-                <pre className="glass-panel p-4 rounded-[var(--radius-lg)] text-sm overflow-x-auto whitespace-pre-wrap">
+                <pre className="glass-panel p-4 rounded-soft text-sm overflow-x-auto whitespace-pre-wrap">
                   {raw}
                 </pre>
 
@@ -487,13 +487,13 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                           >
                             {showRegistrarRaw ? "收起" : "展开"}
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registrarRaw, null, 2))} className="glass-active glass-hover">
-                            <Copy className="h-4 w-4 mr-1" />复制
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registrarRaw, null, 2))} className="glass-active glass-hover interactive">
+                            <Copy className="ui-icon ui-icon-sm ui-icon--before" />复制
                           </Button>
                         </div>
                       </div>
                       {showRegistrarRaw && (
-                        <pre className="glass-panel p-4 rounded-[var(--radius-lg)] text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
+                        <pre className="glass-panel p-4 rounded-soft text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
                           {JSON.stringify(registrarRaw, null, 2)}
                         </pre>
                       )}
@@ -520,13 +520,13 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                           >
                             {showRegistryRaw ? "收起" : "展开"}
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registryRaw, null, 2))} className="glass-active glass-hover">
-                            <Copy className="h-4 w-4 mr-1" />复制
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registryRaw, null, 2))} className="glass-active glass-hover interactive">
+                            <Copy className="ui-icon ui-icon-sm ui-icon--before" />复制
                           </Button>
                         </div>
                       </div>
                       {showRegistryRaw && (
-                        <pre className="glass-panel p-4 rounded-[var(--radius-lg)] text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
+                        <pre className="glass-panel p-4 rounded-soft text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
                           {JSON.stringify(registryRaw, null, 2)}
                         </pre>
                       )}
@@ -539,12 +539,12 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
         ) : null}
 
         <div className="glass-panel glass-enter flex items-center gap-2 pt-4 border-t">
-          <Button variant="outline" size="sm" onClick={onExport} className="glass-active glass-hover">
-            <Download className="h-4 w-4 mr-1" />
+          <Button variant="outline" size="sm" onClick={onExport} className="glass-active glass-hover interactive">
+            <Download className="ui-icon ui-icon-sm ui-icon--before" />
             导出
           </Button>
-          <Button variant="outline" size="sm" onClick={onShare} className="glass-active glass-hover">
-            <Share2 className="h-4 w-4 mr-1" />
+          <Button variant="outline" size="sm" onClick={onShare} className="glass-active glass-hover interactive">
+            <Share2 className="ui-icon ui-icon-sm ui-icon--before" />
             分享
           </Button>
         </div>

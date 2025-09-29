@@ -68,7 +68,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-dot-grid`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

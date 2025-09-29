@@ -195,16 +195,16 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
             <Button 
               type="submit" 
               disabled={loading || !query.trim()}
-              className="w-full sm:w-auto min-w-[100px] glass-active glass-hover"
+              className="w-full sm:w-auto min-w-[100px] glass-active glass-hover interactive"
             >
               {loading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full ui-icon ui-icon-sm border-b-2 border-white ui-icon--before"></div>
                   查询中...
                 </>
               ) : (
                 <>
-                  <Search className="h-4 w-4 mr-2" />
+                  <Search className="ui-icon ui-icon-sm ui-icon--before" />
                   查询
                 </>
               )}
@@ -212,7 +212,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
           </div>
 
           {query.trim() && (
-            <div className="glass-panel glass-enter p-3 rounded-[var(--radius-lg)]">
+            <div className="glass-panel glass-enter p-3 rounded-soft">
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span>检测到类型:</span>
                 <Badge variant="secondary" className="text-xs glass-panel">

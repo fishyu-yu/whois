@@ -167,17 +167,21 @@ export default function Home() {
       {/* 头部导航（整体居中、对称） */}
       <header className="safe-top">
         <div className="container mx-auto px-4">
-          <div className="glass-nav glass-fade-in glass-hover rounded-[var(--radius-lg)] px-4 py-5 md:py-6">
+          <div className="glass-nav glass-fade-in rounded-soft px-4 py-5 md:py-6">
             <div className="flex flex-col items-center gap-3">
-              <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
-              <div className="flex items-center justify-center gap-2">
-                <Button variant="outline" size="sm" asChild className="glass-active">
-                  <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
-                    <Github className="h-4 w-4 mr-1" />
-                    GitHub
-                  </a>
-                </Button>
-                <ThemeToggle />
+              <div className="glass-panel rounded-soft px-4 py-3">
+                <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
+              </div>
+              <div className="glass-panel rounded-soft px-3 py-2">
+                <div className="flex items-center justify-center gap-2">
+                  <Button variant="outline" size="sm" asChild className="glass-active interactive">
+                    <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
+                      <Github className="ui-icon ui-icon-sm ui-icon--before" />
+                      GitHub
+                    </a>
+                  </Button>
+                  <ThemeToggle />
+                </div>
               </div>
             </div>
           </div>
@@ -187,15 +191,15 @@ export default function Home() {
       {/* 主要内容（垂直+水平居中） */}
       <main className="flex-1 px-4 py-8 safe-bottom">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* 左侧：搜索与结果（更突出，占两列） */}
             <div className="md:col-span-2">
-              <div className="glass-card glass-enter glass-hover w-full shadow-md rounded-[var(--radius-lg)] relative overflow-hidden">
-                <div className="space-y-6 relative p-6">
+              <div className="glass-card glass-enter w-full rounded-soft">
+                <div className="space-y-6 p-6">
                   {/* 卡片级加载遮罩 */}
                   {loading && (
                     <div
-                      className="absolute inset-0 rounded-[var(--radius-lg)] z-20 glass-overlay glass-fade-in flex items-center justify-center"
+                      className="absolute inset-0 rounded-soft z-20 glass-overlay glass-fade-in flex items-center justify-center"
                       aria-hidden
                     >
                       <div className="flex items-center gap-2 text-sm glass-chip px-4 py-2">
@@ -206,7 +210,7 @@ export default function Home() {
                   )}
                   <WhoisForm onSubmit={handleQuery} loading={loading} />
                   {!currentResult && (
-                    <div className="p-4 rounded-[var(--radius-lg)] glass-panel text-sm text-muted-foreground glass-enter">
+                    <div className="p-4 rounded-soft glass-panel text-sm text-muted-foreground glass-enter">
                       请输入域名进行查询，支持自动识别类型并展示结构化结果。
                     </div>
                   )}
@@ -222,11 +226,11 @@ export default function Home() {
             {/* 右侧：历史记录（粘性侧栏） */}
             <div className="md:col-span-1">
               <div className="md:sticky md:top-6 sm:static">
-                <div className="glass-card glass-enter glass-hover w-full">
+                <div className="glass-card glass-enter w-full rounded-soft">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
+                        <Clock className="ui-icon ui-icon-sm" />
                         <h2 className="text-base font-semibold">查询历史</h2>
                       </div>
                       <Button 
@@ -237,7 +241,7 @@ export default function Home() {
                         aria-disabled={history.length === 0 || loading}
                         className="glass-active"
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />清空
+                    <Trash2 className="ui-icon ui-icon-sm ui-icon--before" />清空
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground mb-4">仅在本地浏览器保存，点击可快速复查</p>
@@ -289,20 +293,18 @@ export default function Home() {
             <div className="space-y-1">
               <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
               <a 
                 href="https://github.com/fishyu-yu/whois" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:text-foreground transition-colors glass-active px-2 py-1 rounded"
+                className="flex items-center gap-1 hover:text-foreground transition-colors glass-active glass-chip rounded-soft px-2 py-1"
               >
-                <Github className="h-4 w-4" />
+                <Github className="ui-icon ui-icon-sm" />
                 GitHub 项目
               </a>
-              <span className="hidden sm:inline">•</span>
-              <span>基于 Next.js 和 Shadcn UI 构建</span>
-              <span className="hidden sm:inline">•</span>
-              <span>MIT Licensed</span>
+              <div className="glass-chip rounded-soft px-2 py-1">基于 Next.js 和 Shadcn UI 构建</div>
+              <div className="glass-chip rounded-soft px-2 py-1">MIT Licensed</div>
             </div>
           </div>
         </div>
