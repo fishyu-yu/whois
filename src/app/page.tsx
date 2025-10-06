@@ -6,6 +6,7 @@ import { WhoisResult } from "@/components/whois-result"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Github, Clock, Trash2 } from "lucide-react"
 
 interface WhoisData {
@@ -167,24 +168,22 @@ export default function Home() {
       {/* 头部导航（整体居中、对称） */}
       <header className="safe-top">
         <div className="container mx-auto px-4">
-          <div className="glass-nav glass-fade-in rounded-soft px-4 py-5 md:py-6">
-            <div className="flex flex-col items-center gap-3">
-              <div className="glass-panel rounded-soft px-4 py-3">
-                <h1 className="text-2xl font-bold text-center">Whois 查询工具</h1>
+          <Card className="border-0 rounded-soft">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold">Whois 查询工具</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
+                    <Github className="ui-icon ui-icon-sm ui-icon--before" />
+                    GitHub
+                  </a>
+                </Button>
+                <ThemeToggle />
               </div>
-              <div className="glass-panel rounded-soft px-3 py-2">
-                <div className="flex items-center justify-center gap-2">
-                  <Button variant="outline" size="sm" asChild className="glass-active interactive">
-                    <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
-                      <Github className="ui-icon ui-icon-sm ui-icon--before" />
-                      GitHub
-                    </a>
-                  </Button>
-                  <ThemeToggle />
-                </div>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </header>
 
@@ -194,15 +193,15 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* 左侧：搜索与结果（更突出，占两列） */}
             <div className="md:col-span-2">
-              <div className="glass-card glass-enter w-full rounded-soft">
-                <div className="space-y-6 p-6">
+              <Card className="relative w-full rounded-soft border-0">
+                <CardContent className="space-y-6 p-6">
                   {/* 卡片级加载遮罩 */}
                   {loading && (
                     <div
-                      className="absolute inset-0 rounded-soft z-20 glass-overlay glass-fade-in flex items-center justify-center"
+                      className="absolute inset-0 rounded-soft z-20 bg-background/60 backdrop-blur-sm flex items-center justify-center"
                       aria-hidden
                     >
-                      <div className="flex items-center gap-2 text-sm glass-chip px-4 py-2">
+                      <div className="flex items-center gap-2 text-sm rounded-md bg-muted/10 px-4 py-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground"></div>
                         正在查询，请稍候...
                       </div>
@@ -210,7 +209,7 @@ export default function Home() {
                   )}
                   <WhoisForm onSubmit={handleQuery} loading={loading} />
                   {!currentResult && (
-                    <div className="p-4 rounded-soft glass-panel text-sm text-muted-foreground glass-enter">
+                    <div className="p-4 rounded-soft bg-muted/10 text-sm text-muted-foreground">
                       请输入域名进行查询，支持自动识别类型并展示结构化结果。
                     </div>
                   )}
@@ -219,15 +218,15 @@ export default function Home() {
                     onExport={() => currentResult && handleExport(currentResult)}
                     onShare={() => currentResult && handleShare(currentResult)}
                   />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* 右侧：历史记录（粘性侧栏） */}
             <div className="md:col-span-1">
               <div className="md:sticky md:top-6 sm:static">
-                <div className="glass-card glass-enter w-full rounded-soft">
-                  <div className="p-6">
+                <Card className="w-full rounded-soft border-0">
+                  <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <Clock className="ui-icon ui-icon-sm" />
@@ -239,21 +238,20 @@ export default function Home() {
                         onClick={clearHistory} 
                         disabled={history.length === 0 || loading} 
                         aria-disabled={history.length === 0 || loading}
-                        className="glass-active"
                       >
-                    <Trash2 className="ui-icon ui-icon-sm ui-icon--before" />清空
+                        <Trash2 className="ui-icon ui-icon-sm ui-icon--before" />清空
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground mb-4">仅在本地浏览器保存，点击可快速复查</p>
                     
                     {history.length === 0 ? (
-                      <div className="text-sm text-muted-foreground glass-panel p-4 rounded-[var(--radius-lg)] text-center">
+                      <div className="text-sm text-muted-foreground bg-muted/10 p-4 rounded-[var(--radius-lg)] text-center">
                         暂无历史记录
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
                         {history.map((h, idx) => (
-                          <div key={`${h.query}-${h.timestamp}-${idx}`} className="glass-panel glass-hover glass-active rounded-md p-3 transition-all duration-300">
+                          <div key={`${h.query}-${h.timestamp}-${idx}`} className="rounded-md p-3 transition-all duration-300 hover:bg-muted/10">
                             <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3">
                               <button
                                 className="text-left w-full sm:flex-1"
@@ -261,7 +259,7 @@ export default function Home() {
                                 disabled={loading}
                                 aria-label={`重新查询 ${h.query}`}
                               >
-                                <div className="font-mono text-sm font-medium break-all">{h.query}</div>
+                                <div className="font-mono text-sm font-medium text-scroll-x scrollbar-thin" data-scroll-x-wheel>{h.query}</div>
                                 <div className="text-xs text-muted-foreground mt-1">{new Date(h.timestamp).toLocaleString('zh-CN')}</div>
                               </button>
                               <Button 
@@ -269,7 +267,7 @@ export default function Home() {
                                 size="sm" 
                                 onClick={() => handleQuery(h.query, h.type)} 
                                 disabled={loading}
-                                className="glass-active shrink-0 w-full sm:w-auto"
+                                className="shrink-0 w-full sm:w-auto"
                               >
                                 重新查询
                               </Button>
@@ -278,8 +276,8 @@ export default function Home() {
                         ))}
                       </div>
                     )}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>
@@ -289,24 +287,27 @@ export default function Home() {
        {/* 页脚 */}
       <footer className="mt-8">
         <div className="container mx-auto px-4">
-          <div className="glass-nav glass-fade-in glass-hover rounded-[var(--radius-lg)] px-4 py-6 text-center text-sm text-muted-foreground space-y-3 safe-bottom">
-            <div className="space-y-1">
-              <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-              <a 
-                href="https://github.com/fishyu-yu/whois" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:text-foreground transition-colors glass-active glass-chip rounded-soft px-2 py-1"
-              >
-                <Github className="ui-icon ui-icon-sm" />
-                GitHub 项目
-              </a>
-              <div className="glass-chip rounded-soft px-2 py-1">基于 Next.js 和 Shadcn UI 构建</div>
-              <div className="glass-chip rounded-soft px-2 py-1">MIT Licensed</div>
-            </div>
-          </div>
+          <Card className="rounded-soft text-center text-sm text-muted-foreground safe-bottom border-0">
+            <CardContent className="px-4 py-6 space-y-3">
+              <div className="space-y-1">
+                <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                <Button asChild variant="outline" size="sm" className="gap-1">
+                  <a 
+                    href="https://github.com/fishyu-yu/whois" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <Github className="ui-icon ui-icon-sm" />
+                    GitHub 项目
+                  </a>
+                </Button>
+                <Badge variant="secondary">基于 Next.js 和 Shadcn UI 构建</Badge>
+                <Badge variant="secondary">MIT Licensed</Badge>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </footer>
     </div>

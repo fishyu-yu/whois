@@ -16,6 +16,7 @@ import { Copy, Download, Share2, Clock, Globe, Server, Flag, User, ExternalLink 
 import { formatDomainDisplay } from "@/lib/domain-utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useState } from "react"
+import { useHorizontalWheel } from "@/lib/use-horizontal-wheel"
 
 // RDAP/EPP 域名状态字典（中文说明 + 严重程度用于排序）
 const STATUS_INFO: Record<string, { label: string; severity: number }> = {
@@ -93,6 +94,8 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
   // Hooks 必须在组件顶部调用，避免条件调用导致报错
   const [showRegistrarRaw, setShowRegistrarRaw] = useState(false)
   const [showRegistryRaw, setShowRegistryRaw] = useState(false)
+  // 让超长文本容器支持鼠标滚轮横向滚动
+  useHorizontalWheel()
   if (!data || !data.result) return null
  
   /**
@@ -221,7 +224,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
              </p>
            </div>
            <div className="flex items-center gap-2">
-             <Badge variant="secondary" className="flex items-center gap-1 glass-panel">
+             <Badge variant="secondary" className="flex items-center gap-1">
                {getDataSourceIcon(source)}
                {getDataSourceLabel(source)}
              </Badge>
@@ -230,14 +233,14 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
         <div className="space-y-6">
           {/* 查询信息 */}
-          <div className="glass-panel glass-enter flex items-center gap-2 p-3 rounded-soft">
+          <div className="bg-muted/10 flex items-center gap-2 p-3 rounded-soft">
             <Globe className="ui-icon ui-icon-sm" />
-            <code className="glass-panel px-2 py-1 rounded text-sm break-all">{data.query}</code>
+            <code className="bg-muted/10 px-2 py-1 rounded-soft text-sm text-scroll-x scrollbar-thin" data-scroll-x-wheel>{data.query}</code>
           </div>
 
           {/* 错误处理 */}
           {result.error && (
-            <div className="glass-panel glass-enter p-4 border-destructive/20 bg-destructive/5 rounded-soft">
+            <div className="p-4 border border-destructive/20 bg-destructive/5 rounded-soft">
               <p className="text-destructive font-medium">查询失败</p>
               <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
             </div>
@@ -258,35 +261,35 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     {normalized.domain && (
                       <div className="space-y-1">
                         <label className="text-sm font-medium text-muted-foreground">域名</label>
-                        <p className="font-mono text-sm glass-panel p-2 rounded">{normalized.domain}</p>
+                        <p className="font-mono text-sm bg-muted/10 p-2 rounded-soft text-scroll-x scrollbar-thin" data-scroll-x-wheel>{normalized.domain}</p>
                     </div>
                   )}
                   
                   {normalized.registrar && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">注册商</label>
-                      <p className="text-sm glass-panel p-2 rounded">{normalized.registrar}</p>
+                      <p className="text-sm bg-muted/10 p-2 rounded-soft text-scroll-x scrollbar-thin" data-scroll-x-wheel>{normalized.registrar}</p>
                     </div>
                   )}
                   
                   {normalized.registrationDate && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">注册日期</label>
-                      <p className="text-sm glass-panel p-2 rounded">{normalized.registrationDate}</p>
+                      <p className="text-sm bg-muted/10 p-2 rounded">{normalized.registrationDate}</p>
                     </div>
                   )}
 
                   {normalized.updatedDate && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">更新时间</label>
-                      <p className="text-sm glass-panel p-2 rounded">{normalized.updatedDate}</p>
+                      <p className="text-sm bg-muted/10 p-2 rounded">{normalized.updatedDate}</p>
                     </div>
                   )}
 
                   {normalized.expirationDate && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-muted-foreground">到期日期</label>
-                      <p className="text-sm glass-panel p-2 rounded">{normalized.expirationDate}</p>
+                      <p className="text-sm bg-muted/10 p-2 rounded">{normalized.expirationDate}</p>
                     </div>
                   )}
 
@@ -303,7 +306,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     return (
                       <div className="space-y-1">
                         <label className="text-sm font-medium text-muted-foreground">剩余到期天数</label>
-                        <p className="text-sm glass-panel p-2 rounded">{display}</p>
+                        <p className="text-sm bg-muted/10 p-2 rounded-soft">{display}</p>
                       </div>
                     )
                   })()}
@@ -312,7 +315,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                       <label className="text-sm font-medium text-muted-foreground">名称服务器</label>
                       <div className="space-y-2">
                         {normalized.nameServers.map((ns: string, idx: number) => (
-                          <p key={idx} className="text-sm glass-panel p-2 rounded">{ns}</p>
+                          <p key={idx} className="text-sm bg-muted/10 p-2 rounded-soft">{ns}</p>
                         ))}
                       </div>
                     </div>
@@ -326,11 +329,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                           {sortedStatuses.map((s, idx) => (
                             <Tooltip key={`${s.code}-${idx}`}>
                               <TooltipTrigger asChild>
-                                <Badge variant="outline" className="text-xs glass-panel">
+                                <Badge variant="outline" className="text-xs">
                                   {s.code}
                                 </Badge>
                               </TooltipTrigger>
-                              <TooltipContent className="glass-panel">
+                              <TooltipContent>
                                 <p>{s.label}</p>
                               </TooltipContent>
                             </Tooltip>
@@ -394,7 +397,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                         <label className="text-sm font-medium text-muted-foreground">{title}</label>
                         <div className="space-y-2">
                           {fields.map((f, idx) => (
-                            <p key={idx} className="text-sm glass-panel p-2 rounded">
+                            <p key={idx} className="text-sm bg-muted/10 p-2 rounded">
                               <span className="font-medium mr-2">{f.label}</span>
                               {f.value}
                             </p>
@@ -433,11 +436,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     {sortedStatuses.map((s, idx) => (
                       <Tooltip key={`overview-${s.code}-${idx}`}>
                         <TooltipTrigger asChild>
-                          <Badge variant="secondary" className="text-xs glass-panel">
+                          <Badge variant="secondary" className="text-xs">
                             {s.code}
                           </Badge>
                         </TooltipTrigger>
-                        <TooltipContent className="glass-panel">
+                        <TooltipContent>
                           <p>{s.label}</p>
                         </TooltipContent>
                       </Tooltip>
@@ -462,7 +465,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                     复制
                   </Button>
                 </div>
-                <pre className="glass-panel p-4 rounded-soft text-sm overflow-x-auto whitespace-pre-wrap">
+                <pre className="bg-muted/10 p-4 rounded-soft text-sm overflow-x-auto whitespace-pre-wrap scrollbar-thin" data-scroll-x-wheel>
                   {raw}
                 </pre>
 
@@ -492,7 +495,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                         </div>
                       </div>
                       {showRegistrarRaw && (
-                        <pre className="glass-panel p-4 rounded-soft text-sm overflow-x-auto whitespace-pre" id="registrar-rdap-raw">
+                        <pre className="bg-muted/10 p-4 rounded-soft text-sm overflow-x-auto whitespace-pre scrollbar-thin" id="registrar-rdap-raw" data-scroll-x-wheel>
                           {JSON.stringify(registrarRaw, null, 2)}
                         </pre>
                       )}
@@ -525,7 +528,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                         </div>
                       </div>
                       {showRegistryRaw && (
-                        <pre className="glass-panel p-4 rounded-soft text-sm overflow-x-auto whitespace-pre" id="registry-rdap-raw">
+                        <pre className="bg-muted/10 p-4 rounded-soft text-sm overflow-x-auto whitespace-pre scrollbar-thin" id="registry-rdap-raw" data-scroll-x-wheel>
                           {JSON.stringify(registryRaw, null, 2)}
                         </pre>
                       )}
@@ -537,12 +540,12 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
           </div>
         ) : null}
 
-        <div className="glass-panel glass-enter flex items-center gap-2 pt-4 border-t">
+        <div className="flex items-center gap-2 pt-4">
           <Button variant="outline" size="sm" onClick={onExport} className="glass-active glass-hover interactive">
             <Download className="ui-icon ui-icon-sm ui-icon--before" />
             导出
           </Button>
-          <Button variant="outline" size="sm" onClick={onShare} className="glass-active glass-hover interactive">
+          <Button variant="outline" size="sm" onClick={onShare}>
             <Share2 className="ui-icon ui-icon-sm ui-icon--before" />
             分享
           </Button>

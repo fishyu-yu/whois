@@ -133,7 +133,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
                 disabled={loading}
-                className="w-full text-sm sm:text-base glass-active"
+                className="w-full text-sm sm:text-base"
                 aria-label="查询输入"
               />
               
@@ -142,27 +142,27 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
                 <div className="mt-2 space-y-2 glass-enter">
                   {domainValidation.isValid ? (
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary" className="flex items-center gap-1 glass-panel">
+                      <Badge variant="secondary" className="flex items-center gap-1">
                         <Globe className="h-3 w-3" />
                         {domainValidation.type === 'domain' ? '根域名' : '子域名'}
                       </Badge>
                       
                       {domainValidation.isCCTLD && (
-                        <Badge variant="secondary" className="flex items-center gap-1 glass-panel">
+                        <Badge variant="secondary" className="flex items-center gap-1">
                           <Flag className="h-3 w-3" />
                           国家顶级域名
                         </Badge>
                       )}
                       
                       {domainValidation.isIDN && (
-                        <Badge variant="secondary" className="flex items-center gap-1 glass-panel">
+                        <Badge variant="secondary" className="flex items-center gap-1">
                           <Globe className="h-3 w-3" />
                           国际化域名
                         </Badge>
                       )}
                     </div>
                   ) : (
-                    <div className="glass-panel p-3 rounded-[var(--radius-lg)] border-destructive/20 bg-destructive/5">
+                    <div className="p-3 rounded-soft border border-destructive/20 bg-destructive/5">
                       <p className="text-destructive text-sm font-medium">域名格式错误</p>
                       {domainValidation.errors && domainValidation.errors.length > 0 && (
                         <ul className="text-xs text-destructive/80 mt-1 space-y-1">
@@ -179,10 +179,10 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
 
             <div className="flex flex-col sm:flex-row gap-2">
               <Select value={queryType} onValueChange={(v) => setQueryType(v)}>
-                <SelectTrigger className="w-full glass-active" aria-label="选择查询类型">
+                <SelectTrigger className="w-full" aria-label="选择查询类型">
                   <SelectValue placeholder="自动识别" />
                 </SelectTrigger>
-                <SelectContent className="glass-panel">
+                <SelectContent>
                   <SelectItem value="auto">自动识别</SelectItem>
                   <SelectItem value="domain">域名</SelectItem>
                   <SelectItem value="ip">IP</SelectItem>
@@ -194,7 +194,7 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
             <Button 
               type="submit" 
               disabled={loading || !query.trim()}
-              className="w-full sm:w-auto min-w-[100px] glass-active glass-hover interactive"
+              className="w-full sm:w-auto min-w-[100px]"
             >
               {loading ? (
                 <>
@@ -211,15 +211,15 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
           </div>
 
           {query.trim() && (
-            <div className="glass-panel glass-enter p-3 rounded-soft">
+            <div className="p-3 rounded-soft bg-muted/10">
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span>检测到类型:</span>
-                <Badge variant="secondary" className="text-xs glass-panel">
+                <Badge variant="secondary" className="text-xs">
                   {detectQueryType(query.trim())}
                 </Badge>
                 <span className="mx-1">•</span>
                 <span>当前选择:</span>
-                <Badge variant="outline" className="text-xs glass-panel">
+                <Badge variant="outline" className="text-xs">
                   {queryType}
                 </Badge>
               </div>
