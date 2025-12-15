@@ -149,7 +149,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     registrarAbusePhone: parsed?.registrar_abuse_contact_phone || parsed?.registrarAbuseContactPhone,
     
     registrationDate: parsed?.registrationDate || parsed?.creationDate || parsed?.creation_date || parsed?.createdDate || parsed?.registration_time,
-    expirationDate: parsed?.expirationDate || parsed?.registryExpiryDate || parsed?.registry_expiry_date || parsed?.expiryDate || parsed?.expiration_time,
+    expirationDate: parsed?.expirationDate || parsed?.registryExpiryDate || parsed?.registry_expiry_date || parsed?.expiryDate || parsed?.expiry_date || parsed?.expiration_time || parsed?.expires,
     updatedDate: parsed?.updatedDate || parsed?.updated_date || parsed?.updateDate || parsed?.lastUpdated || parsed?.last_update,
     
     nameServers: (() => {

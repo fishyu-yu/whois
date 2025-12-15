@@ -110,24 +110,35 @@ function parseEvents(events: RDAPEvent[] | undefined): { [key: string]: string }
 
   for (const event of events) {
     const action = (event.eventAction || '').toLowerCase();
-    switch (action) {
-      case 'registration':
-      case 'created':
-        result.creation_date = event.eventDate;
-        break;
-      case 'expiration':
-      case 'expiry':
-        result.registry_expiry_date = event.eventDate;
-        break;
-      case 'last changed':
-      case 'last update of rdap database':
-      case 'last update of whois database':
-      case 'last update':
-      case 'update':
-        result.updated_date = event.eventDate;
-        break;
-      default:
-        break;
+
+    if (
+      action.includes('registration') ||
+      action === 'created' ||
+      action.includes('create')
+    ) {
+      result.creation_date = event.eventDate;
+      continue;
+    }
+
+    if (
+      action.includes('expiration') ||
+      action.includes('expiry') ||
+      action.includes('expire')
+    ) {
+      result.registry_expiry_date = event.eventDate;
+      continue;
+    }
+
+    if (
+      action.includes('last changed') ||
+      action.includes('last update of rdap database') ||
+      action.includes('last update of whois database') ||
+      action.includes('last update') ||
+      action === 'update' ||
+      action === 'updated'
+    ) {
+      result.updated_date = event.eventDate;
+      continue;
     }
   }
 
