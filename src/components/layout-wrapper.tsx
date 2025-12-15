@@ -16,7 +16,7 @@ export function LayoutWrapper({ children, className }: { children: ReactNode, cl
        </div>
 
        <footer className="relative z-10 py-8 text-center text-sm text-muted-foreground mt-auto">
-          <p>© {new Date().getFullYear()} Whale Education Co.,Ltd. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Whale Education Co.,Ltd. 版权所有</p>
        </footer>
     </div>
   )

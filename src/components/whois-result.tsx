@@ -70,7 +70,7 @@ const getStatusInfo = (code: string) => {
 }
 
 const formatDate = (dateStr?: string) => {
-  if (!dateStr) return "N/A"
+  if (!dateStr) return "未知"
   try {
     return new Date(dateStr).toLocaleDateString("zh-CN", {
       year: "numeric",
@@ -219,17 +219,17 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
           filename += ".json"
       } else {
           const rows = [
-              ["Field", "Value"],
-              ["Domain Name", normalized.domain],
-              ["Registrar", normalized.registrar],
-              ["Registration Date", normalized.registrationDate],
-              ["Expiration Date", normalized.expirationDate],
-              ["Updated Date", normalized.updatedDate],
-              ["Name Servers", normalized.nameServers.join("; ")],
-              ["Status", normalized.domainStatus.join("; ")],
-              ["Registrant Name", normalized.registrant.name || normalized.registrant.organization || ""],
-              ["Registrant Email", normalized.registrant.email || ""],
-              ["Raw Data", `"${raw.replace(/"/g, '""')}"`]
+              ["字段", "值"],
+              ["域名", normalized.domain],
+              ["注册商", normalized.registrar],
+              ["注册时间", normalized.registrationDate],
+              ["到期时间", normalized.expirationDate],
+              ["更新时间", normalized.updatedDate],
+              ["DNS 服务器", normalized.nameServers.join("; ")],
+              ["状态", normalized.domainStatus.join("; ")],
+              ["注册人名称", normalized.registrant.name || normalized.registrant.organization || ""],
+              ["注册人邮箱", normalized.registrant.email || ""],
+              ["原始数据", `"${raw.replace(/"/g, '""')}"`]
           ]
           content = rows.map(r => r.join(",")).join("\n")
           type = "text/csv"
@@ -349,11 +349,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
         <div className="flex gap-2">
            <Button variant="ghost" size="sm" onClick={() => handleExport('json')} className="h-9 gap-2 rounded-full hover:bg-secondary">
              <Download className="w-4 h-4" />
-             JSON
+             导出 JSON
            </Button>
             <Button variant="ghost" size="sm" onClick={() => handleExport('csv')} className="h-9 gap-2 rounded-full hover:bg-secondary">
              <Download className="w-4 h-4" />
-             CSV
+             导出 CSV
            </Button>
            <Button variant="ghost" size="sm" onClick={handleCopy} className="h-9 gap-2 rounded-full hover:bg-secondary">
              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -447,12 +447,12 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
             <div>
                 <p className="text-sm text-muted-foreground mb-2">注册商</p>
-                <p className="font-medium text-base">{normalized.registrar || "N/A"}</p>
+                <p className="font-medium text-base">{normalized.registrar || "未知"}</p>
                 {normalized.registrarIanaId && <p className="text-muted-foreground text-xs mt-1">IANA ID: {normalized.registrarIanaId}</p>}
                 
                 {(normalized.registrarAbuseEmail || normalized.registrarAbusePhone) && (
                     <div className="mt-4 pt-4 border-t border-border/50">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">滥用投诉</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">滥用投诉</p>
                         {normalized.registrarAbuseEmail && <p className="text-xs font-mono">{maskEmail(normalized.registrarAbuseEmail)}</p>}
                         {normalized.registrarAbusePhone && <p className="text-xs font-mono">{normalized.registrarAbusePhone}</p>}
                     </div>
@@ -460,7 +460,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
             </div>
             
             <div className="md:col-span-2">
-               <p className="text-sm text-muted-foreground mb-3">Name Servers</p>
+               <p className="text-sm text-muted-foreground mb-3">DNS 服务器</p>
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                    {normalized.nameServers.map((ns: string, i: number) => (
                      <div key={i} className="flex items-center gap-2 text-sm font-mono text-foreground/80">

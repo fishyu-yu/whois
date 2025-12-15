@@ -102,7 +102,7 @@ export default function DomainPage() {
           {loading ? (
               <div className="flex flex-col items-center justify-center py-32 gap-6 text-muted-foreground">
                   <Loader2 className="w-10 h-10 animate-spin text-primary/50" />
-                  <p className="text-lg font-light">Loading intelligence for <span className="font-medium text-foreground">{domain}</span>...</p>
+                  <p className="text-lg font-light">正在为 <span className="font-medium text-foreground">{domain}</span> 加载域名情报...</p>
               </div>
           ) : currentResult ? (
               <WhoisResult 

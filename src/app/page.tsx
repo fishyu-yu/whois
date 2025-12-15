@@ -147,7 +147,7 @@ export default function Home() {
                   Whois<span className="text-primary">.Lookup</span>
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-lg mx-auto leading-relaxed font-light">
-                  Simple, fast, and comprehensive domain intelligence.
+                  简洁、快速且全面的域名情报查询工具。
                 </p>
              </div>
           )}
@@ -161,7 +161,7 @@ export default function Home() {
 
           {!currentResult && history.length > 0 && (
              <div className="mt-8 flex flex-wrap justify-center gap-2 animate-in fade-in duration-1000 delay-300">
-                <span className="text-sm text-muted-foreground mr-2 py-1">Recent:</span>
+                <span className="text-sm text-muted-foreground mr-2 py-1">最近查询：</span>
                 {history.slice(0, 3).map((item, i) => (
                   <button 
                     key={i}
@@ -210,7 +210,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-semibold text-xl tracking-tight flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              History
+              历史记录
             </h3>
             <Button variant="ghost" size="icon" className="rounded-full hover:bg-secondary" onClick={() => setShowHistory(false)}>
               <X className="w-5 h-5" />
@@ -237,7 +237,7 @@ export default function Home() {
             {history.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50">
                  <History className="w-12 h-12 mb-4 opacity-20" />
-                 <p className="text-sm">No history yet</p>
+                 <p className="text-sm">暂无历史记录</p>
               </div>
             )}
           </div>
