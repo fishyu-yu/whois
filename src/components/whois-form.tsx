@@ -5,52 +5,47 @@
  * 创建日期：2025-09-25
  * 修改记录：
  * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ * - 2025-12-15: 重构为现代 UI 风格
  */
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Globe, Flag } from "lucide-react"
+import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight } from "lucide-react"
 import { validateDomain } from "@/lib/domain-utils"
+import { cn } from "@/lib/utils"
 
-/**
- * WhoisForm 组件的属性
- * @property onSubmit - 查询提交回调：(query, type, dataSource)
- * @property loading - 加载状态，禁用输入与按钮
- */
 interface WhoisFormProps {
   onSubmit: (query: string, type: string, dataSource?: string) => void
   loading: boolean
+  defaultValue?: string
 }
 
-/**
- * WhoisForm 查询表单组件
- * 负责输入交互、类型选择与触发查询
- * @param props - 组件属性
- * @returns 查询表单 UI
- */
-export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
-  /** 当前输入的查询字符串 */ const [query, setQuery] = useState("")
-  /** 当前选择的查询类型。'auto' 自动识别；'domain' 指定域名；'ip'/'asn' 暂不支持 */ const [queryType, setQueryType] = useState("auto")
-  /** 域名验证结果（仅在识别为域名时生成）；包含 isValid、errors、isCCTLD、isIDN 等字段 */ const [domainValidation, setDomainValidation] = useState<any>(null)
+export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
+  const [query, setQuery] = useState(defaultValue || "")
+  const [queryType, setQueryType] = useState("auto")
+  const [validation, setValidation] = useState<{ isValid: boolean; message?: string; type?: string } | null>(null)
+  const [isFocused, setIsFocused] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  /**
-   * 自动检测输入的查询类型（域名 / IP / ASN / 未知）
-   * 使用宽松域名正则以支持国际化域名（IDN）与 punycode 前缀 xn--
-   * @param input - 待检测的字符串
-   * @returns 'domain' | 'ip' | 'asn' | 'unknown'
-   */
+  useEffect(() => {
+    if (defaultValue) {
+      handleInputChange(defaultValue)
+    }
+  }, []) // Run once on mount if defaultValue exists
+
+  // If defaultValue updates (e.g. navigation), update query
+  useEffect(() => {
+    if (defaultValue && defaultValue !== query) {
+        setQuery(defaultValue)
+        handleInputChange(defaultValue)
+    }
+  }, [defaultValue])
+
   const detectQueryType = (input: string): string => {
-    // 域名检测 - 支持国际化域名和更多字符
     const domainRegex = /^[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$|^xn--[a-zA-Z0-9-]+(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$/
-    // 简单IP检测（IPv4/IPv6 近似）
     const ipv4Regex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.)){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
     const ipv6Regex = /^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$/
-    // ASN 检测：AS 或纯数字（不含点/冒号）
     const asnRegex = /^(AS)?\d{1,10}$/i
 
     if (ipv4Regex.test(input) || ipv6Regex.test(input)) return "ip"
@@ -59,173 +54,116 @@ export function WhoisForm({ onSubmit, loading }: WhoisFormProps) {
     return "unknown"
   }
 
-  /**
-   * 输入变化处理：更新 query 并在识别为域名时触发验证
-   * @param value - 新的输入值
-   */
   const handleInputChange = (value: string) => {
     setQuery(value)
     
-    // 如果输入看起来像域名，进行验证
-    const detectedType = detectQueryType(value)
-    if (detectedType === "domain" && value.trim()) {
-      const validation = validateDomain(value.trim())
-      setDomainValidation(validation)
+    if (!value.trim()) {
+      setValidation(null)
+      return
+    }
+
+    const type = detectQueryType(value)
+    
+    if (type === "domain") {
+      const res = validateDomain(value.trim())
+      if (res.isValid) {
+        setValidation({ isValid: true, type: "domain" })
+      } else {
+        setValidation({ isValid: false, message: res.errors[0], type: "domain" })
+      }
+    } else if (type === "ip") {
+      setValidation({ isValid: true, type: "ip" })
+    } else if (type === "asn") {
+      setValidation({ isValid: true, type: "asn" })
     } else {
-      setDomainValidation(null)
+      setValidation({ isValid: false, message: "无效的查询格式", type: "unknown" })
     }
   }
 
-  /**
-   * 表单提交：校验输入、决定查询类型并触发回调
-   * - 暂不支持 IP/ASN 查询，会弹出提示
-   * - 根据用户选择或自动检测决定最终类型
-   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!query.trim()) return
+    if (!query.trim() || (validation && !validation.isValid)) return
 
     const autoDetected = detectQueryType(query.trim())
     const detectedType = queryType === "auto" ? autoDetected : queryType
 
     if (detectedType === "unknown") {
-      alert("请输入有效的域名/IP/ASN，例如 example.com、1.1.1.1 或 AS13335")
+      setValidation({ isValid: false, message: "请输入有效的域名/IP/ASN", type: "unknown" })
       return
     }
 
     onSubmit(query.trim(), detectedType, "rdap")
   }
 
-  /**
-   * 生成类型 Badge 显示（域名/IP/未知）
-   * @param input - 输入字符串
-   * @returns JSX.Element | null
-   */
-  const getQueryTypeBadge = (input: string) => {
-    if (!input.trim()) return null
-    const type = detectQueryType(input.trim())
-    const typeLabels = {
-      domain: "域名",
-      ip: "IP",
-      unknown: "未知"
+  const getIcon = () => {
+    if (!validation?.type) return <Search className="w-5 h-5 text-muted-foreground" />
+    switch (validation.type) {
+      case "domain": return <Globe className="w-5 h-5 text-primary" />
+      case "ip": return <Network className="w-5 h-5 text-primary" />
+      case "asn": return <Server className="w-5 h-5 text-primary" />
+      default: return <Search className="w-5 h-5 text-muted-foreground" />
     }
-    return (
-      <Badge variant={type === "unknown" ? "destructive" : "secondary"}>
-        {typeLabels[type as keyof typeof typeLabels]}
-      </Badge>
-    )
   }
 
   return (
-      <div className="p-6">
-        <div className="mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold">Whois 查询</h2>
-          <p className="text-sm sm:text-base text-muted-foreground mt-2">
-            输入域名、IP 地址或 ASN 进行查询
-          </p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1">
-              <Input
-                type="text"
-                placeholder="例如: example.com、1.1.1.1、AS13335"
-                value={query}
-                onChange={(e) => handleInputChange(e.target.value)}
-                disabled={loading}
-                className="w-full text-sm sm:text-base"
-                aria-label="查询输入"
-              />
-              
-              {/* 域名验证信息显示 */}
-              {domainValidation && (
-                <div className="mt-2 space-y-2 glass-enter">
-                  {domainValidation.isValid ? (
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Globe className="h-3 w-3" />
-                        {domainValidation.type === 'domain' ? '根域名' : '子域名'}
-                      </Badge>
-                      
-                      {domainValidation.isCCTLD && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Flag className="h-3 w-3" />
-                          国家顶级域名
-                        </Badge>
-                      )}
-                      
-                      {domainValidation.isIDN && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Globe className="h-3 w-3" />
-                          国际化域名
-                        </Badge>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="p-3 rounded-soft border border-destructive/20 bg-destructive/5">
-                      <p className="text-destructive text-sm font-medium">域名格式错误</p>
-                      {domainValidation.errors && domainValidation.errors.length > 0 && (
-                        <ul className="text-xs text-destructive/80 mt-1 space-y-1">
-                          {domainValidation.errors.map((error: string, idx: number) => (
-                            <li key={idx}>• {error}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+    <div className="w-full max-w-3xl mx-auto space-y-4">
+      <form onSubmit={handleSubmit} className="relative group">
+        <div 
+          className={cn(
+            "relative flex items-center w-full transition-all duration-300 rounded-2xl border bg-background/50 backdrop-blur-xl shadow-sm overflow-hidden",
+            isFocused ? "ring-2 ring-primary/20 border-primary shadow-lg scale-[1.01]" : "border-border/50 hover:border-primary/50",
+            validation?.isValid === false && "border-destructive ring-destructive/20"
+          )}
+        >
+          <div className="pl-6 pr-4 py-4 flex items-center justify-center">
+            {loading ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : getIcon()}
+          </div>
+          
+          <input
+            ref={inputRef}
+            type="text"
+            className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-muted-foreground/50 py-6 h-16 w-full"
+            placeholder="输入域名、IP地址或ASN号码..."
+            value={query}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
+          />
 
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Select value={queryType} onValueChange={(v) => setQueryType(v)}>
-                <SelectTrigger className="w-full" aria-label="选择查询类型">
-                  <SelectValue placeholder="自动识别" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">自动识别</SelectItem>
-                  <SelectItem value="domain">域名</SelectItem>
-                  <SelectItem value="ip">IP</SelectItem>
-                  <SelectItem value="asn">ASN</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="pr-2">
             <Button 
+              size="icon" 
               type="submit" 
-              disabled={loading || !query.trim()}
-              className="w-full sm:w-auto min-w-[100px]"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full ui-icon ui-icon-sm border-b-2 border-white ui-icon--before"></div>
-                  查询中...
-                </>
-              ) : (
-                <>
-                  <Search className="ui-icon ui-icon-sm ui-icon--before" />
-                  查询
-                </>
+              className={cn(
+                "h-12 w-12 rounded-xl transition-all duration-300 shadow-md",
+                query.trim() ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none"
               )}
+              disabled={loading || (validation?.isValid === false)}
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
             </Button>
           </div>
+        </div>
 
-          {query.trim() && (
-            <div className="p-3 rounded-soft bg-muted/10">
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <span>检测到类型:</span>
-                <Badge variant="secondary" className="text-xs">
-                  {detectQueryType(query.trim())}
-                </Badge>
-                <span className="mx-1">•</span>
-                <span>当前选择:</span>
-                <Badge variant="outline" className="text-xs">
-                  {queryType}
-                </Badge>
-              </div>
-            </div>
-          )}
-        </form>
+        {/* Validation Message */}
+        <div className={cn(
+          "absolute -bottom-8 left-0 text-sm font-medium transition-all duration-300 flex items-center gap-2",
+          validation?.isValid === false ? "opacity-100 translate-y-0 text-destructive" : "opacity-0 -translate-y-2 pointer-events-none"
+        )}>
+          <AlertCircle className="w-4 h-4" />
+          {validation?.message}
+        </div>
+      </form>
+
+      <div className="flex flex-wrap gap-2 justify-center text-sm text-muted-foreground/80 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("example.com")}>example.com</span>
+        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("8.8.8.8")}>8.8.8.8</span>
+        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("AS15169")}>AS15169</span>
       </div>
+    </div>
   )
 }

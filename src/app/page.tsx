@@ -1,3 +1,9 @@
+/**
+ * 文件：src/app/page.tsx
+ * 用途：首页组件，集成 WhoisForm 和 WhoisResult
+ * 修改记录：
+ * - 2025-12-15: 重构为现代 UI 风格，添加动态背景和布局
+ */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -5,9 +11,9 @@ import { WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Github, Clock, Trash2 } from "lucide-react"
+import { Github, History } from "lucide-react"
+import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 interface WhoisData {
   query: string
@@ -28,6 +34,7 @@ export default function Home() {
   const [currentResult, setCurrentResult] = useState<WhoisData | null>(null)
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [showHistory, setShowHistory] = useState(false)
 
   // 在地址栏中更新路径但不触发页面导航
   const updateURLPath = (q: string) => {
@@ -60,15 +67,12 @@ export default function Home() {
     saveHistory(deduped.slice(0, 20))
   }
 
-  const clearHistory = () => {
-    saveHistory([])
-  }
-
-  const handleQuery = async (query: string, type: string, dataSource?: string) => {
-    // 更新地址栏路径，形如 /google.com，但不触发页面导航
+  const handleQuery = async (query: string, type: string) => {
     updateURLPath(query)
-
     setLoading(true)
+    // Optional: Clear previous result to show transition clearly
+    // setCurrentResult(null) 
+    
     try {
       const response = await fetch("/api/whois", {
         method: "POST",
@@ -95,224 +99,144 @@ export default function Home() {
       }
 
       const result = await response.json()
-      const whoisData: WhoisData = {
+      const resultData = result.data || result;
+
+      const newData: WhoisData = {
         query,
         type,
-        result: result.data,
+        result: resultData,
         timestamp: new Date().toISOString(),
       }
-
-      setCurrentResult(whoisData)
-      addHistory({ query, type, timestamp: whoisData.timestamp })
-    } catch (error) {
-      console.error("查询错误:", error)
+      setCurrentResult(newData)
+      addHistory({ query, type, timestamp: newData.timestamp })
+      
+    } catch (err) {
+      console.error(err)
       const errorData: WhoisData = {
         query,
         type,
-        result: { error: "查询失败，请稍后重试" },
+        result: { error: "网络请求失败" },
         timestamp: new Date().toISOString(),
       }
       setCurrentResult(errorData)
-      addHistory({ query, type, timestamp: errorData.timestamp })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleExport = (data: WhoisData) => {
-    const exportData = {
-      query: data.query,
-      type: data.type,
-      result: data.result,
-      timestamp: data.timestamp,
-      exported_at: new Date().toISOString(),
-    }
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: "application/json",
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `whois-${data.query}-${new Date().toISOString().split("T")[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  const handleShare = async (data: WhoisData) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Whois 查询结果 - ${data.query}`,
-          text: `查询对象: ${data.query}\n类型: ${data.type}\n时间: ${new Date(data.timestamp).toLocaleString()}`,
-          url: window.location.href,
-        })
-      } catch (error) {
-        console.error("分享失败:", error)
-      }
-    } else {
-      // 降级到复制链接
-      try {
-        await navigator.clipboard.writeText(window.location.href)
-        alert("链接已复制到剪贴板")
-      } catch (error) {
-        console.error("复制失败:", error)
-      }
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* 头部导航（整体居中、对称） */}
-      <header className="safe-top">
-        <div className="container mx-auto px-4">
-          <Card className="border-0 rounded-soft">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold">Whois 查询工具</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center gap-2">
-                <Button variant="outline" size="sm" asChild>
-                  <a href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer">
-                    <Github className="ui-icon ui-icon-sm ui-icon--before" />
-                    GitHub
-                  </a>
-                </Button>
-                <ThemeToggle />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </header>
+    <main className="min-h-screen relative overflow-hidden bg-background selection:bg-primary/20">
+      {/* Background Gradients */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[120px]" />
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
+      </div>
 
-      {/* 主要内容（垂直+水平居中） */}
-      <main className="flex-1 px-4 py-8 safe-bottom">
-        <div className="container mx-auto max-w-6xl">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* 左侧：搜索与结果（更突出，占两列） */}
-            <div className="md:col-span-2">
-              <Card className="relative w-full rounded-soft border-0">
-                <CardContent className="space-y-6 p-6">
-                  {/* 卡片级加载遮罩 */}
-                  {loading && (
-                    <div
-                      className="absolute inset-0 rounded-soft z-20 bg-background/60 backdrop-blur-sm flex items-center justify-center"
-                      aria-hidden
-                    >
-                      <div className="flex items-center gap-2 text-sm rounded-md bg-muted/10 px-4 py-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground"></div>
-                        正在查询，请稍候...
-                      </div>
-                    </div>
-                  )}
-                  <WhoisForm onSubmit={handleQuery} loading={loading} />
-                  {!currentResult && (
-                    <div className="p-4 rounded-soft bg-muted/10 text-sm text-muted-foreground">
-                      请输入域名进行查询，支持自动识别类型并展示结构化结果。
-                    </div>
-                  )}
-                  <WhoisResult
-                    data={currentResult}
-                    onExport={() => currentResult && handleExport(currentResult)}
-                    onShare={() => currentResult && handleShare(currentResult)}
-                  />
-                </CardContent>
-              </Card>
+      <div className="relative z-10 container mx-auto px-4 py-8 flex flex-col min-h-screen">
+        
+        {/* Header */}
+        <header className="flex justify-between items-center mb-16 md:mb-24">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20">
+              W
             </div>
+            <span className="font-bold text-xl tracking-tight">Whois<span className="text-primary">.Lookup</span></span>
+          </div>
+          <div className="flex items-center gap-2 md:gap-4">
+             <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setShowHistory(!showHistory)}
+              className={cn("transition-colors rounded-full", showHistory && "bg-secondary text-secondary-foreground")}
+            >
+              <History className="w-5 h-5" />
+            </Button>
+            <Link href="https://github.com/FishYu/whois" target="_blank">
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Github className="w-5 h-5" />
+              </Button>
+            </Link>
+            <ThemeToggle />
+          </div>
+        </header>
 
-            {/* 右侧：历史记录（粘性侧栏） */}
-            <div className="md:col-span-1">
-              <div className="md:sticky md:top-6 sm:static">
-                <Card className="w-full rounded-soft border-0">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Clock className="ui-icon ui-icon-sm" />
-                        <h2 className="text-base font-semibold">查询历史</h2>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={clearHistory} 
-                        disabled={history.length === 0 || loading} 
-                        aria-disabled={history.length === 0 || loading}
-                      >
-                        <Trash2 className="ui-icon ui-icon-sm ui-icon--before" />清空
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-4">仅在本地浏览器保存，点击可快速复查</p>
-                    
-                    {history.length === 0 ? (
-                      <div className="text-sm text-muted-foreground bg-muted/10 p-4 rounded-[var(--radius-lg)] text-center">
-                        暂无历史记录
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {history.map((h, idx) => (
-                          <div key={`${h.query}-${h.timestamp}-${idx}`} className="rounded-md p-3 transition-all duration-300 hover:bg-muted/10">
-                            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3">
-                              <button
-                                className="text-left w-full sm:flex-1"
-                                onClick={() => handleQuery(h.query, h.type)}
-                                disabled={loading}
-                                aria-label={`重新查询 ${h.query}`}
-                              >
-                                <div className="font-mono text-sm font-medium text-scroll-x scrollbar-thin" data-scroll-x-wheel>{h.query}</div>
-                                <div className="text-xs text-muted-foreground mt-1">{new Date(h.timestamp).toLocaleString('zh-CN')}</div>
-                              </button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleQuery(h.query, h.type)} 
-                                disabled={loading}
-                                className="shrink-0 w-full sm:w-auto"
-                              >
-                                重新查询
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col items-center w-full max-w-5xl mx-auto transition-all duration-500">
+          
+          <div className={cn(
+            "text-center space-y-6 mb-12 transition-all duration-700 w-full ease-out",
+            currentResult ? "translate-y-0" : "translate-y-[10vh]"
+          )}>
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70 pb-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              探索域名的<br className="md:hidden" /> <span className="text-gradient">数字足迹</span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-700 delay-100">
+              极速查询域名、IP 地址和 ASN 信息。深入了解互联网基础设施的每一个角落。
+            </p>
+
+            <div className="pt-4 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
+              <WhoisForm onSubmit={handleQuery} loading={loading} />
             </div>
           </div>
-        </div>
-      </main>
 
-       {/* 页脚 */}
-      <footer className="mt-8">
-        <div className="container mx-auto px-4">
-          <Card className="rounded-soft text-center text-sm text-muted-foreground safe-bottom border-0">
-            <CardContent className="px-4 py-6 space-y-3">
-              <div className="space-y-1">
-                <p>© 2025 Ryan Hang & Whale Education Co., Ltd. All rights reserved.</p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                <Button asChild variant="outline" size="sm" className="gap-1">
-                  <a 
-                    href="https://github.com/fishyu-yu/whois" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                  >
-                    <Github className="ui-icon ui-icon-sm" />
-                    GitHub 项目
-                  </a>
-                </Button>
-                <Badge variant="secondary">基于 Next.js 和 Shadcn UI 构建</Badge>
-                <Badge variant="secondary">MIT Licensed</Badge>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Result Area */}
+          <div className={cn(
+            "w-full transition-all duration-700 delay-100",
+            currentResult ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12 pointer-events-none absolute"
+          )}>
+            {currentResult && (
+               <WhoisResult 
+                 data={currentResult} 
+                 onExport={() => {}} 
+                 onShare={() => {}} 
+               />
+            )}
+          </div>
         </div>
-      </footer>
-    </div>
+
+        {/* History Sidebar/Overlay */}
+        {showHistory && (
+          <>
+            <div className="fixed inset-0 bg-background/20 backdrop-blur-sm z-40" onClick={() => setShowHistory(false)} />
+            <div className="fixed inset-y-0 right-0 w-80 bg-background/90 backdrop-blur-xl border-l border-border shadow-2xl z-50 p-6 transform transition-transform duration-300 animate-in slide-in-from-right">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <History className="w-5 h-5 text-primary" />
+                  搜索历史
+                </h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>关闭</Button>
+              </div>
+              <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-100px)] custom-scrollbar pr-2">
+                {history.map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      handleQuery(item.query, item.type)
+                      setShowHistory(false)
+                    }}
+                    className="w-full text-left p-3 rounded-xl hover:bg-secondary/50 transition-colors group border border-transparent hover:border-border/50"
+                  >
+                    <div className="font-medium group-hover:text-primary transition-colors truncate">{item.query}</div>
+                    <div className="text-xs text-muted-foreground flex justify-between mt-1">
+                      <span className="uppercase bg-secondary/30 px-1.5 py-0.5 rounded text-[10px]">{item.type}</span>
+                      <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                    </div>
+                  </button>
+                ))}
+                {history.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">暂无历史记录</p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Footer */}
+        <footer className="py-8 text-center text-sm text-muted-foreground animate-in fade-in duration-1000 delay-500">
+          <p>© {new Date().getFullYear()} Whale Education Co.,Ltd</p>
+        </footer>
+      </div>
+    </main>
   )
 }
-
-// 在地址栏中更新路径但不触发页面导航
-const APP_VERSION = "v0.10.0"

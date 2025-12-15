@@ -1,40 +1,38 @@
 /**
  * 文件：src/components/whois-result.tsx
- * 用途：展示 WHOIS/RDAP 查询结果，包含解析数据与原始文本的呈现与导出
- * 作者：Ryan
- * 创建日期：2025-09-25
+ * 用途：Whois 查询结果展示组件
  * 修改记录：
- * - 2025-09-25：添加中文文件头与 JSDoc 注释
+ * - 2025-12-15: 重构为现代 UI 风格
+ * - 2025-12-15: 完善详细信息展示，包括联系人、注册商等，并增加导出功能
  */
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Copy, Download, Share2, Clock, Globe, Server, Flag, User, ExternalLink } from "lucide-react"
-import { formatDomainDisplay } from "@/lib/domain-utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useState } from "react"
-import { useHorizontalWheel } from "@/lib/use-horizontal-wheel"
+import { Copy, Share2, Clock, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Building, Mail, Phone, MapPin, Download } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-// RDAP/EPP 域名状态字典（中文说明 + 严重程度用于排序）
-const STATUS_INFO: Record<string, { label: string; severity: number }> = {
-  ok: { label: "正常", severity: 0 },
+// RDAP/EPP 域名状态字典
+const STATUS_INFO: Record<string, { label: string; severity: number; description?: string }> = {
+  ok: { label: "正常", severity: 0, description: "域名状态正常，可以解析和续费" },
   active: { label: "活跃", severity: 0 },
-  clienthold: { label: "客户端暂停解析", severity: 3 },
-  serverhold: { label: "服务端暂停解析", severity: 3 },
-  redemptionperiod: { label: "赎回期", severity: 3 },
-  pendingdelete: { label: "等待删除", severity: 3 },
+  clienthold: { label: "暂停解析 (Client)", severity: 3, description: "注册商暂停了解析，通常是因为未验证邮箱或欠费" },
+  serverhold: { label: "暂停解析 (Server)", severity: 3, description: "注册局暂停了解析，通常涉及法律或滥用问题" },
+  redemptionperiod: { label: "赎回期", severity: 3, description: "域名已过期并进入赎回期，恢复费用较高" },
+  pendingdelete: { label: "等待删除", severity: 3, description: "域名即将被删除并释放" },
   inactive: { label: "未激活", severity: 2 },
-  clientDeleteProhibited: { label: "客户端禁止删除", severity: 1 },
-  serverDeleteProhibited: { label: "服务端禁止删除", severity: 1 },
-  clientUpdateProhibited: { label: "客户端禁止更新", severity: 1 },
-  serverUpdateProhibited: { label: "服务端禁止更新", severity: 1 },
-  clientRenewProhibited: { label: "客户端禁止续费", severity: 1 },
-  serverRenewProhibited: { label: "服务端禁止续费", severity: 1 },
-  clienttransferprohibited: { label: "客户端禁止转移", severity: 2 },
-  serverTransferProhibited: { label: "服务端禁止转移", severity: 2 },
+  clientDeleteProhibited: { label: "禁止删除 (Client)", severity: 1 },
+  serverDeleteProhibited: { label: "禁止删除 (Server)", severity: 1 },
+  clientUpdateProhibited: { label: "禁止更新 (Client)", severity: 1 },
+  serverUpdateProhibited: { label: "禁止更新 (Server)", severity: 1 },
+  clientRenewProhibited: { label: "禁止续费 (Client)", severity: 1 },
+  serverRenewProhibited: { label: "禁止续费 (Server)", severity: 1 },
+  clientTransferProhibited: { label: "禁止转移 (Client)", severity: 1, description: "域名锁定，防止被恶意转移" },
+  serverTransferProhibited: { label: "禁止转移 (Server)", severity: 1 },
   pendingCreate: { label: "等待创建", severity: 1 },
   pendingRenew: { label: "等待续费", severity: 1 },
   pendingTransfer: { label: "等待转移", severity: 1 },
@@ -47,61 +45,70 @@ const STATUS_INFO: Record<string, { label: string; severity: number }> = {
   locked: { label: "锁定", severity: 2 },
 }
 
-// 规范化状态码：移除所有空格/连字符/下划线并转为小写，便于字典匹配
 const canonicalizeStatus = (code: string) => (code || "")
   .trim()
   .replace(/[\s\-_]+/g, "")
   .toLowerCase()
 
-// 基于 STATUS_INFO 构建规范化索引（支持大小写与空格差异的输入）
-const STATUS_INFO_CANONICAL: Record<string, { label: string; severity: number }> = Object.fromEntries(
+const STATUS_INFO_CANONICAL: Record<string, { label: string; severity: number; description?: string }> = Object.fromEntries(
   Object.entries(STATUS_INFO).map(([key, info]) => [canonicalizeStatus(key), info])
 )
 
-/**
- * WhoisResult 组件的属性
- * @property data - 查询结果数据对象，支持多种嵌套结构（result.raw/parsed 或 data.raw/parsed）
- * @property onExport - 导出动作回调（可选）
- * @property onShare - 分享动作回调（可选）
- */
 interface WhoisResultProps {
   data: any
   onExport?: () => void
   onShare?: () => void
 }
 
-/**
- * 将状态码标准化为包含中文标签与严重程度的对象
- * 未知状态将以默认标签“未知状态”返回，严重程度为 1
- * @param code - RDAP/EPP 状态码
- * @returns 包含 code、label、severity 的对象
- */
 const getStatusInfo = (code: string) => {
   const codeNoSpaces = (code || "").trim().replace(/[\s\-_]+/g, "")
   const canonical = canonicalizeStatus(code)
   const info = STATUS_INFO_CANONICAL[canonical]
   if (info) return { code: codeNoSpaces, ...info }
-  return { code: codeNoSpaces, label: "未知状态", severity: 1 }
+  return { code: codeNoSpaces, label: codeNoSpaces || "未知状态", severity: 1 }
 }
 
-/**
- * WhoisResult 查询结果展示组件
- * 展示解析信息、状态概览、原始数据（含注册商/注册局 RDAP 原文），并提供导出与分享操作
- * @param props - 组件属性
- * @returns JSX.Element | null
- */
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return "N/A"
+  try {
+    return new Date(dateStr).toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+const calculateDaysRemaining = (dateStr?: string) => {
+  if (!dateStr) return null
+  try {
+    const target = new Date(dateStr).getTime()
+    const now = new Date().getTime()
+    const diff = target - now
+    return Math.ceil(diff / (1000 * 60 * 60 * 24))
+  } catch {
+    return null
+  }
+}
+
+// 隐私保护处理：隐藏部分邮箱字符
+const maskEmail = (email: string) => {
+  if (!email || !email.includes("@")) return email
+  const [user, domain] = email.split("@")
+  const maskedUser = user.length > 2 ? user.slice(0, 2) + "***" : user + "***"
+  return `${maskedUser}@${domain}`
+}
+
 export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
-  // Hooks 必须在组件顶部调用，避免条件调用导致报错
-  const [showRegistrarRaw, setShowRegistrarRaw] = useState(false)
-  const [showRegistryRaw, setShowRegistryRaw] = useState(false)
-  // 让超长文本容器支持鼠标滚轮横向滚动
-  useHorizontalWheel()
+  const [showRaw, setShowRaw] = useState(false)
+  const [copied, setCopied] = useState(false)
+
   if (!data || !data.result) return null
- 
-  /**
-   * 根据不同返回形态提取有效的 raw/parsed 容器
-   * 兼容多层 result.data 或 result.result 结构
-   */
+
   const result = data.result
   const effective = (result && (result.raw || result.parsed))
     ? result
@@ -113,444 +120,350 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
  
   const parsed = effective?.parsed || null
   const raw = effective?.raw || ""
- 
-  /**
-   * 将不同命名风格（snake_case/camelCase）与可选字段统一到 normalized
-   */
+
+  // 辅助函数：从 parsed 对象中提取嵌套字段
+  // 许多 Whois 解析库会将联系人信息放在 contacts 或类似结构中
+  const getContact = (type: string) => {
+      const contacts = parsed?.contacts || parsed?.contact || {}
+      return contacts[type] || contacts[type.toLowerCase()] || null
+  }
+
+  // 整合并标准化数据
   const normalized = {
-    domain: parsed?.domain || parsed?.domain_name,
-    registrar: parsed?.registrar || parsed?.sponsoring_registrar,
-    registrationDate: parsed?.registrationDate || parsed?.creation_date || parsed?.registration_time,
-    expirationDate: parsed?.expirationDate || parsed?.registry_expiry_date || parsed?.expiration_time,
-    updatedDate: parsed?.updated_date || parsed?.update_date || parsed?.last_update || parsed?.last_updated,
+    domain: parsed?.domain || parsed?.domainName || parsed?.domain_name,
+    registrar: parsed?.registrar || parsed?.sponsoringRegistrar || parsed?.sponsoring_registrar,
+    registrarUrl: parsed?.registrarUrl || parsed?.registrar_url,
+    registrarIanaId: parsed?.registrarIanaId || parsed?.registrar_iana_id,
+    registrarPhone: parsed?.registrarPhone || parsed?.registrar_phone,
+    registrarEmail: parsed?.registrarEmail || parsed?.registrar_email,
+    whoisServer: parsed?.whoisServer || parsed?.whois_server,
+    
+    registrationDate: parsed?.registrationDate || parsed?.creationDate || parsed?.creation_date || parsed?.createdDate || parsed?.registration_time,
+    expirationDate: parsed?.expirationDate || parsed?.registryExpiryDate || parsed?.registry_expiry_date || parsed?.expiryDate || parsed?.expiration_time,
+    updatedDate: parsed?.updatedDate || parsed?.updated_date || parsed?.updateDate || parsed?.lastUpdated || parsed?.last_update,
+    
     nameServers: (() => {
-      const ns = parsed?.nameServers || parsed?.name_server || parsed?.name_servers
+      const ns = parsed?.nameServers || parsed?.nameServer || parsed?.name_server || parsed?.name_servers || parsed?.nserver
       if (!ns) return []
+      // 有些返回是字符串（空格分隔），有些是数组
+      if (typeof ns === 'string') return ns.split(/\s+/)
       return Array.isArray(ns) ? ns : [ns]
     })(),
+    
     domainStatus: (() => {
-      const st = parsed?.domainStatus || parsed?.domain_status || parsed?.status
+      const st = parsed?.domainStatus || parsed?.domain_status || parsed?.status || parsed?.state
       if (!st) return []
+      // 同样处理字符串或数组
+      if (typeof st === 'string') return st.split(/\s+/)
       return Array.isArray(st) ? st : [st]
-    })()
-  }
- 
-  const sortedStatuses = (normalized.domainStatus || [])
-    .map((s: string) => getStatusInfo(s))
-    .sort((a, b) => b.severity - a.severity || a.code.localeCompare(b.code))
- 
-  /**
-   * 将文本复制到剪贴板
-   * @param text - 待复制文本
-   */
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+    })(),
+    
+    dnssec: parsed?.dnssec || parsed?.DNSSEC,
+    
+    // 联系人信息
+    registrant: getContact("registrant") || parsed?.registrant || {},
+    admin: getContact("admin") || getContact("administrative") || parsed?.admin || {},
+    tech: getContact("tech") || getContact("technical") || parsed?.tech || {},
   }
 
-  /**
-   * 解析数据来源（注册商/注册局/RDAP/WHOIS/模拟），兼容不同层级字段
-   * @returns 数据来源标识字符串
-   */
-  const resolveDataSource = () => {
-    // dataSource 只在外层 result 上（模拟/真实都有），某些情况下可能缺失
-    return result?.dataSource || data?.dataSource || "auto"
+  const daysRemaining = calculateDaysRemaining(normalized.expirationDate)
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(raw)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
-  const source = resolveDataSource()
+  const handleExport = (format: 'json' | 'csv') => {
+      let content = ""
+      let type = ""
+      let filename = `whois-${normalized.domain || 'query'}`
 
-  /**
-   * 根据数据来源选择对应的图标
-   * @param dataSource - 数据来源标识
-   * @returns 对应的 React 图标组件
-   */
-  const getDataSourceIcon = (dataSource: string) => {
-    switch (dataSource) {
-      case 'rdap-registry':
-      case 'registry':
-        return <Flag className="ui-icon ui-icon-sm" />
-      case 'rdap-registrar':
-      case 'registrar':
-        return <User className="ui-icon ui-icon-sm" />
-      case 'rdap':
-        return <ExternalLink className="ui-icon ui-icon-sm" />
-      case 'whois':
-      case 'standard':
-        return <Server className="ui-icon ui-icon-sm" />
-      case 'mock':
-        return <Globe className="ui-icon ui-icon-sm" />
-      default:
-        return <Globe className="ui-icon ui-icon-sm" />
-    }
+      if (format === 'json') {
+          content = JSON.stringify(data, null, 2)
+          type = "application/json"
+          filename += ".json"
+      } else {
+          // 简单的 CSV 导出逻辑 (扁平化部分关键字段)
+          const rows = [
+              ["Field", "Value"],
+              ["Domain Name", normalized.domain],
+              ["Registrar", normalized.registrar],
+              ["Registration Date", normalized.registrationDate],
+              ["Expiration Date", normalized.expirationDate],
+              ["Updated Date", normalized.updatedDate],
+              ["Name Servers", normalized.nameServers.join("; ")],
+              ["Status", normalized.domainStatus.join("; ")],
+              ["Registrant Name", normalized.registrant.name || normalized.registrant.organization || ""],
+              ["Registrant Email", normalized.registrant.email || ""],
+              ["Raw Data", `"${raw.replace(/"/g, '""')}"`] // 简单的 CSV 转义
+          ]
+          content = rows.map(r => r.join(",")).join("\n")
+          type = "text/csv"
+          filename += ".csv"
+      }
+
+      const blob = new Blob([content], { type })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
   }
 
-  /**
-   * 将数据来源标识转换为中文可读标签
-   * @param dataSource - 数据来源标识
-   * @returns 中文标签字符串
-   */
-  const getDataSourceLabel = (dataSource: string) => {
-    switch (dataSource) {
-      case 'rdap-registry':
-        return 'RDAP 注册局'
-      case 'rdap-registrar':
-        return 'RDAP 注册商'
-      case 'registry':
-        return '注册局'
-      case 'registrar':
-        return '注册商'
-      case 'rdap':
-        return 'RDAP'
-      case 'whois':
-        return '传统 WHOIS'
-      case 'standard':
-        return '标准查询'
-      case 'mock':
-        return '模拟数据'
-      case 'auto':
-        return '自动选择'
-      default:
-        return '未知来源'
-    }
+  // 渲染联系人卡片的辅助组件
+  const ContactCard = ({ title, contact }: { title: string, contact: any }) => {
+    if (!contact || Object.keys(contact).length === 0) return null
+    
+    // 尝试提取常用字段，兼容不同解析格式
+    const name = contact.name || contact.Name
+    const org = contact.organization || contact.org || contact.Organization
+    const email = contact.email || contact.Email || contact["e-mail"]
+    const phone = contact.phone || contact.Phone || contact["phone-number"]
+    const street = contact.street || contact.address || contact.Street
+    const city = contact.city || contact.City
+    const state = contact.state || contact.State || contact.province
+    const country = contact.country || contact.Country || contact["country-code"]
+
+    const hasData = name || org || email || phone || street || city || country
+
+    if (!hasData) return null
+
+    return (
+        <Card className="glass-card border-none h-full">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                    <User className="w-5 h-5 text-primary" />
+                    {title}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+                {(name || org) && (
+                    <div className="flex items-start gap-2">
+                        <User className="w-4 h-4 text-muted-foreground mt-0.5" />
+                        <div>
+                            {name && <p className="font-medium">{name}</p>}
+                            {org && <p className="text-muted-foreground">{org}</p>}
+                        </div>
+                    </div>
+                )}
+                {email && (
+                     <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-mono text-xs">{maskEmail(email)}</span>
+                     </div>
+                )}
+                 {phone && (
+                     <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-mono text-xs">{phone}</span>
+                     </div>
+                )}
+                {(street || city || country) && (
+                     <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
+                        <div className="text-muted-foreground">
+                            {street && <p>{street}</p>}
+                            <p>{[city, state, country].filter(Boolean).join(", ")}</p>
+                        </div>
+                     </div>
+                )}
+            </CardContent>
+        </Card>
+    )
   }
 
   return (
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-             <h2 className="text-xl font-semibold">查询结果</h2>
-             <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-               <Clock className="ui-icon ui-icon-sm" />
-               {new Date(result.timestamp || data.timestamp).toLocaleString('zh-CN')}
-             </p>
-           </div>
-           <div className="flex items-center gap-2">
-             <Badge variant="secondary" className="flex items-center gap-1">
-               {getDataSourceIcon(source)}
-               {getDataSourceLabel(source)}
-             </Badge>
-           </div>
-        </div>
-
-        <div className="space-y-6">
-          {/* 查询信息 */}
-          <div className="bg-muted/10 flex items-center gap-2 p-3 rounded-soft">
-            <Globe className="ui-icon ui-icon-sm" />
-            <code className="bg-muted/10 px-2 py-1 rounded-soft text-sm text-scroll-x scrollbar-thin" data-scroll-x-wheel>{data.query}</code>
-          </div>
-
-          {/* 错误处理 */}
-          {result.error && (
-            <div className="p-4 border border-destructive/20 bg-destructive/5 rounded-soft">
-              <p className="text-destructive font-medium">查询失败</p>
-              <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
-            </div>
-          )}
-
-          {/* 成功结果 */}
-          {!result.error && (parsed || raw) ? (
-            <div className="space-y-4">
-              {/* 解析后的数据 */}
-              {parsed && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <Server className="ui-icon ui-icon-sm" />
-                    域名信息
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {normalized.domain && (
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground">域名</label>
-                        <p className="font-mono text-sm bg-muted/10 p-2 rounded-soft text-scroll-x scrollbar-thin" data-scroll-x-wheel>{normalized.domain}</p>
-                    </div>
-                  )}
-                  
-                  {normalized.registrar && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">注册商</label>
-                      <p className="text-sm bg-muted/10 p-2 rounded-soft text-scroll-x scrollbar-thin" data-scroll-x-wheel>{normalized.registrar}</p>
-                    </div>
-                  )}
-                  
-                  {normalized.registrationDate && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">注册日期</label>
-                      <p className="text-sm bg-muted/10 p-2 rounded">{normalized.registrationDate}</p>
-                    </div>
-                  )}
-
-                  {normalized.updatedDate && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">更新时间</label>
-                      <p className="text-sm bg-muted/10 p-2 rounded">{normalized.updatedDate}</p>
-                    </div>
-                  )}
-
-                  {normalized.expirationDate && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">到期日期</label>
-                      <p className="text-sm bg-muted/10 p-2 rounded">{normalized.expirationDate}</p>
-                    </div>
-                  )}
-
-                  {(() => {
-                    // 计算剩余到期天数
-                    const exp = normalized.expirationDate
-                    if (!exp) return null
-                    const expDate = new Date(String(exp))
-                    if (isNaN(expDate.getTime())) return null
-                    const now = new Date()
-                    const diffMs = expDate.getTime() - now.getTime()
-                    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-                    const display = days >= 0 ? `${days} 天` : `已过期 ${Math.abs(days)} 天`
-                    return (
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground">剩余到期天数</label>
-                        <p className="text-sm bg-muted/10 p-2 rounded-soft">{display}</p>
-                      </div>
-                    )
-                  })()}
-                  {normalized.nameServers && normalized.nameServers.length > 0 && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">名称服务器</label>
-                      <div className="space-y-2">
-                        {normalized.nameServers.map((ns: string, idx: number) => (
-                          <p key={idx} className="text-sm bg-muted/10 p-2 rounded-soft">{ns}</p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {sortedStatuses && sortedStatuses.length > 0 ? (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">域名状态</label>
-                      <div className="flex flex-wrap gap-2">
-                        <TooltipProvider>
-                          {sortedStatuses.map((s, idx) => (
-                            <Tooltip key={`${s.code}-${idx}`}>
-                              <TooltipTrigger asChild>
-                                <Badge variant="outline" className="text-xs">
-                                  {s.code}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{s.label}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ))}
-                        </TooltipProvider>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* 联系人信息 */}
-                {(() => {
-                  // 根据域名判断是否为 .CN，以便调整"组织"字段标签为"注册人/机构"
-                  const currentDomain = normalized.domain || (typeof parsed?.domain_name === 'string' ? parsed?.domain_name : '')
-                  const isCN = (currentDomain || '').toLowerCase().endsWith('.cn')
-
-                  const contacts = {
-                    registrant: {
-                      name: parsed?.registrant_name || parsed?.registrant,
-                      organization: parsed?.registrant_organization,
-                      email: parsed?.registrant_email || parsed?.registrant_contact_email,
-                      phone: parsed?.registrant_phone || (parsed as any)?.registrant_contact_phone,
-                      country: parsed?.registrant_country,
-                    },
-                    administrative: {
-                      name: parsed?.admin_name,
-                      organization: parsed?.admin_organization,
-                      email: parsed?.admin_email,
-                      phone: parsed?.admin_phone,
-                      country: (parsed as any)?.admin_country,
-                    },
-                    technical: {
-                      name: parsed?.tech_name,
-                      organization: parsed?.tech_organization,
-                      email: parsed?.tech_email,
-                      phone: parsed?.tech_phone,
-                      country: (parsed as any)?.tech_country,
-                    },
-                    billing: {
-                      name: parsed?.billing_name,
-                      organization: parsed?.billing_organization,
-                      email: parsed?.billing_email,
-                      phone: parsed?.billing_phone,
-                      country: parsed?.billing_country,
-                    },
-                  }
-                  const hasAny = Object.values(contacts).some((c: any) => c && (c.name || c.organization || c.email || c.phone || c.country))
-                  if (!hasAny) return null
-
-                  const renderContactBlock = (title: string, c: any, orgLabel?: string) => {
-                    const fields = [
-                      { label: '姓名', value: c?.name },
-                      { label: orgLabel || '组织', value: c?.organization },
-                      { label: '邮箱', value: c?.email },
-                      { label: '电话', value: c?.phone },
-                      { label: '国家/地区', value: c?.country },
-                    ].filter(f => f.value)
-                    if (fields.length === 0) return null
-                    return (
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground">{title}</label>
-                        <div className="space-y-2">
-                          {fields.map((f, idx) => (
-                            <p key={idx} className="text-sm bg-muted/10 p-2 rounded">
-                              <span className="font-medium mr-2">{f.label}</span>
-                              {f.value}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div className="space-y-4">
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        联系人信息
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {renderContactBlock('注册人', contacts.registrant, isCN ? '注册人/机构' : '组织')}
-                        {renderContactBlock('行政联系人', contacts.administrative)}
-                        {renderContactBlock('技术联系人', contacts.technical)}
-                        {renderContactBlock('账单联系人', contacts.billing)}
-                      </div>
-                    </div>
-                  )
-                })()}
-
-              </div>
+    <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+      
+      {/* Header Card */}
+      <div className="glass-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 mb-2 break-all">
+            {normalized.domain || "查询结果"}
+          </h2>
+          <div className="flex flex-wrap gap-2 items-center text-muted-foreground">
+            {normalized.registrar && (
+              <span className="flex items-center gap-1.5 text-sm bg-secondary/30 px-3 py-1 rounded-full border border-secondary/20">
+                <Globe className="w-3.5 h-3.5" />
+                {normalized.registrar}
+              </span>
             )}
+            {daysRemaining !== null && (
+              <span className={cn(
+                "flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border",
+                daysRemaining < 30 ? "bg-red-500/10 text-red-600 border-red-500/20" : "bg-green-500/10 text-green-600 border-green-500/20"
+              )}>
+                <Clock className="w-3.5 h-3.5" />
+                {daysRemaining > 0 ? `剩余 ${daysRemaining} 天` : "已过期"}
+              </span>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex gap-2 flex-wrap">
+           <Button variant="outline" size="sm" onClick={() => handleExport('json')} className="h-9 gap-2">
+             <Download className="w-4 h-4" />
+             JSON
+           </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('csv')} className="h-9 gap-2">
+             <Download className="w-4 h-4" />
+             CSV
+           </Button>
+           <Button variant="outline" size="sm" onClick={handleCopy} className="h-9 gap-2">
+             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+             复制
+           </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Dates Card */}
+        <Card className="glass-card border-none md:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              关键日期
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">注册时间</p>
+              <p className="font-mono text-sm">{formatDate(normalized.registrationDate)}</p>
+            </div>
+            <Separator />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">过期时间</p>
+              <p className="font-mono text-sm">{formatDate(normalized.expirationDate)}</p>
+            </div>
+            <Separator />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">更新时间</p>
+              <p className="font-mono text-sm">{formatDate(normalized.updatedDate)}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Status & Registrar Info Card */}
+        <Card className="glass-card border-none md:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              域名状态 & 注册商
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            <div>
+                <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">状态</h4>
+                <div className="flex flex-wrap gap-2">
+                {normalized.domainStatus.length > 0 ? (
+                    normalized.domainStatus.map((status: string, i: number) => {
+                    const info = getStatusInfo(status)
+                    let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "outline"
+                    
+                    if (info.severity === 0) badgeVariant = "default" // Normal/Active
+                    else if (info.severity === 1) badgeVariant = "secondary" // Prohibited/Locked
+                    else if (info.severity >= 2) badgeVariant = "destructive" // Hold/Delete
+
+                    return (
+                        <TooltipProvider key={i}>
+                        <Tooltip>
+                            <TooltipTrigger>
+                            <Badge variant={badgeVariant} className="px-3 py-1 text-sm font-normal cursor-help">
+                                {info.label}
+                            </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                            <p>{info.description || info.code}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        </TooltipProvider>
+                    )
+                    })
+                ) : (
+                    <span className="text-muted-foreground text-sm">无状态信息</span>
+                )}
+                </div>
+            </div>
 
             <Separator />
 
-            {sortedStatuses && sortedStatuses.length > 0 ? (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg">状态概览</h3>
-                <div className="flex flex-wrap gap-2">
-                  <TooltipProvider>
-                    {sortedStatuses.map((s, idx) => (
-                      <Tooltip key={`overview-${s.code}-${idx}`}>
-                        <TooltipTrigger asChild>
-                          <Badge variant="secondary" className="text-xs">
-                            {s.code}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{s.label}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </TooltipProvider>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">注册商</h4>
+                    <p className="font-medium">{normalized.registrar || "N/A"}</p>
+                    {normalized.registrarIanaId && <p className="text-muted-foreground text-xs">IANA ID: {normalized.registrarIanaId}</p>}
                 </div>
-              </div>
-            ) : null}
-
-            {/* 原始数据 */}
-            {raw && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg">原始数据</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(raw)}
-                    className="glass-active glass-hover interactive"
-                  >
-                    <Copy className="ui-icon ui-icon-sm ui-icon--before" />
-                    复制
-                  </Button>
+                <div>
+                     <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">Whois 服务器</h4>
+                     <p className="font-mono text-xs">{normalized.whoisServer || "N/A"}</p>
                 </div>
-                <pre className="bg-muted/10 p-4 rounded-soft text-sm overflow-x-auto whitespace-pre-wrap scrollbar-thin" data-scroll-x-wheel>
-                  {raw}
-                </pre>
-
-                {/* 新增：原始注册服务机构 RDAP 响应 */}
-                {(() => {
-                  // 向下兼容：字段可能在不同层级
-                  const registrarRaw = result?.rdapRegistrarRaw || effective?.rdapRegistrarRaw || result?.result?.rdapRegistrarRaw || null
-                  if (!registrarRaw) return null
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-base">原始注册服务机构 RDAP 响应</h4>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowRegistrarRaw(!showRegistrarRaw)}
-                            aria-expanded={showRegistrarRaw}
-                            aria-controls="registrar-rdap-raw"
-                            className="glass-active"
-                          >
-                            {showRegistrarRaw ? "收起" : "展开"}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registrarRaw, null, 2))} className="glass-active glass-hover interactive">
-                            <Copy className="ui-icon ui-icon-sm ui-icon--before" />复制
-                          </Button>
-                        </div>
-                      </div>
-                      {showRegistrarRaw && (
-                        <pre className="bg-muted/10 p-4 rounded-soft text-sm overflow-x-auto whitespace-pre scrollbar-thin" id="registrar-rdap-raw" data-scroll-x-wheel>
-                          {JSON.stringify(registrarRaw, null, 2)}
-                        </pre>
-                      )}
+                 {normalized.registrarUrl && (
+                    <div className="col-span-1 sm:col-span-2">
+                         <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">注册商网址</h4>
+                         <a href={normalized.registrarUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate block">
+                             {normalized.registrarUrl}
+                         </a>
                     </div>
-                  )
-                })()}
+                )}
+             </div>
 
-                {/* 新增：原始注册管理机构 RDAP 响应 */}
-                {(() => {
-                  const registryRaw = result?.rdapRegistryRaw || effective?.rdapRegistryRaw || result?.result?.rdapRegistryRaw || null
-                  if (!registryRaw) return null
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-base">原始注册管理机构 RDAP 响应</h4>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowRegistryRaw(!showRegistryRaw)}
-                            aria-expanded={showRegistryRaw}
-                            aria-controls="registry-rdap-raw"
-                            className="glass-active"
-                          >
-                            {showRegistryRaw ? "收起" : "展开"}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(registryRaw, null, 2))} className="glass-active glass-hover interactive">
-                            <Copy className="ui-icon ui-icon-sm ui-icon--before" />复制
-                          </Button>
-                        </div>
-                      </div>
-                      {showRegistryRaw && (
-                        <pre className="bg-muted/10 p-4 rounded-soft text-sm overflow-x-auto whitespace-pre scrollbar-thin" id="registry-rdap-raw" data-scroll-x-wheel>
-                          {JSON.stringify(registryRaw, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                  )
-                })()}
+             {normalized.nameServers.length > 0 && (
+              <div>
+                 <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">DNS 服务器</h4>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                   {normalized.nameServers.map((ns: string, i: number) => (
+                     <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/20 text-sm font-mono break-all">
+                       <Server className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                       {ns}
+                     </div>
+                   ))}
+                 </div>
               </div>
             )}
-          </div>
-        ) : null}
-
-        <div className="flex items-center gap-2 pt-4">
-          <Button variant="outline" size="sm" onClick={onExport} className="glass-active glass-hover interactive">
-            <Download className="ui-icon ui-icon-sm ui-icon--before" />
-            导出
-          </Button>
-          <Button variant="outline" size="sm" onClick={onShare}>
-            <Share2 className="ui-icon ui-icon-sm ui-icon--before" />
-            分享
-          </Button>
-        </div>
+          </CardContent>
+        </Card>
       </div>
+      
+      {/* Contact Info Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+         <div className="md:col-span-1">
+             <ContactCard title="注册人 (Registrant)" contact={normalized.registrant} />
+         </div>
+         <div className="md:col-span-1">
+             <ContactCard title="管理联系人 (Admin)" contact={normalized.admin} />
+         </div>
+         <div className="md:col-span-1">
+             <ContactCard title="技术联系人 (Tech)" contact={normalized.tech} />
+         </div>
+      </div>
+
+      {/* Raw Data Toggle */}
+      <div className="glass-card rounded-2xl overflow-hidden">
+        <button 
+          onClick={() => setShowRaw(!showRaw)}
+          className="w-full flex items-center justify-between p-4 bg-secondary/10 hover:bg-secondary/20 transition-colors"
+        >
+          <span className="font-medium flex items-center gap-2">
+            <Server className="w-4 h-4" />
+            原始 Whois 数据
+          </span>
+          {showRaw ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+        
+        {showRaw && (
+          <div className="p-0 bg-zinc-950 text-zinc-50 overflow-x-auto">
+             <pre className="p-4 text-xs md:text-sm font-mono leading-relaxed whitespace-pre-wrap">
+               {raw || JSON.stringify(data, null, 2)}
+             </pre>
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }
