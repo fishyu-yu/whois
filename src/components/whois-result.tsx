@@ -161,9 +161,30 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     dnssec: parsed?.dnssec || parsed?.DNSSEC,
     
     // 联系人信息
-    registrant: getContact("registrant") || parsed?.registrant || {},
-    admin: getContact("admin") || getContact("administrative") || parsed?.admin || {},
-    tech: getContact("tech") || getContact("technical") || parsed?.tech || {},
+    registrant: {
+      name: parsed?.registrant_name,
+      organization: parsed?.registrant_organization,
+      email: parsed?.registrant_email,
+      phone: parsed?.registrant_phone,
+      country: parsed?.registrant_country,
+      ...getContact("registrant")
+    },
+    admin: {
+      name: parsed?.admin_name,
+      organization: parsed?.admin_organization,
+      email: parsed?.admin_email,
+      phone: parsed?.admin_phone,
+      country: parsed?.admin_country,
+      ...getContact("admin")
+    },
+    tech: {
+      name: parsed?.tech_name,
+      organization: parsed?.tech_organization,
+      email: parsed?.tech_email,
+      phone: parsed?.tech_phone,
+      country: parsed?.tech_country,
+      ...getContact("tech")
+    },
   }
 
   const daysRemaining = calculateDaysRemaining(normalized.expirationDate)
