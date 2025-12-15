@@ -264,11 +264,44 @@ async function performDomainWhoisWithPriority(query: string): Promise<any> {
       }
     }
 
-    // 第三步：决定使用哪个结果
-    if (registrarResult && hasRichContactData(registrarResult.parsed)) {
-      finalResult = { ...registrarResult, query, type: "domain", timestamp: new Date().toISOString(), dataSource: "registrar" }
+    // 第三步：合并结果并决定使用哪个结果，以获得尽可能全面的字段
+    if (registrarResult && registryResult) {
+      const mergedParsed = {
+        ...(registryResult.parsed || {}),
+        ...(registrarResult.parsed || {}),
+      }
+
+      const preferRegistrar =
+        hasRichContactData(mergedParsed) || hasRichContactData(registrarResult.parsed)
+
+      const base = preferRegistrar ? registrarResult : registryResult
+
+      finalResult = {
+        ...base,
+        parsed: mergedParsed,
+        query,
+        type: "domain",
+        timestamp: new Date().toISOString(),
+        dataSource: preferRegistrar ? "registrar" : "registry",
+        registryRaw: registryResult.raw,
+        registrarRaw: registrarResult.raw,
+      }
+    } else if (registrarResult) {
+      finalResult = {
+        ...registrarResult,
+        query,
+        type: "domain",
+        timestamp: new Date().toISOString(),
+        dataSource: "registrar",
+      }
     } else if (registryResult) {
-      finalResult = { ...registryResult, query, type: "domain", timestamp: new Date().toISOString(), dataSource: "registry" }
+      finalResult = {
+        ...registryResult,
+        query,
+        type: "domain",
+        timestamp: new Date().toISOString(),
+        dataSource: "registry",
+      }
     } else {
       throw new Error("无法获取域名信息")
     }

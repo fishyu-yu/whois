@@ -95,12 +95,8 @@ const calculateDaysRemaining = (dateStr?: string) => {
   }
 }
 
-// 隐私保护处理：隐藏部分邮箱字符
 const maskEmail = (email: string) => {
-  if (!email || !email.includes("@")) return email
-  const [user, domain] = email.split("@")
-  const maskedUser = user.length > 2 ? user.slice(0, 2) + "***" : user + "***"
-  return `${maskedUser}@${domain}`
+  return email
 }
 
 export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
@@ -121,6 +117,18 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
   const parsed = effective?.parsed || null
   const raw = effective?.raw || ""
 
+  const pickValue = (...keys: string[]) => {
+    if (!parsed) return undefined
+    for (const key of keys) {
+      const v = (parsed as any)[key]
+      if (v === undefined || v === null) continue
+      if (typeof v === "string" && v.trim().length === 0) continue
+      if (Array.isArray(v) && v.length === 0) continue
+      return v
+    }
+    return undefined
+  }
+
   // 辅助函数：从 parsed 对象中提取嵌套字段
   // 许多 Whois 解析库会将联系人信息放在 contacts 或类似结构中
   const getContact = (type: string) => {
@@ -136,7 +144,9 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     registrarIanaId: parsed?.registrarIanaId || parsed?.registrar_iana_id,
     registrarPhone: parsed?.registrarPhone || parsed?.registrar_phone,
     registrarEmail: parsed?.registrarEmail || parsed?.registrar_email,
-    whoisServer: parsed?.whoisServer || parsed?.whois_server,
+    whoisServer: parsed?.whoisServer || parsed?.whois_server || parsed?.registrar_whois_server,
+    registrarAbuseEmail: parsed?.registrar_abuse_contact_email || parsed?.registrarAbuseContactEmail,
+    registrarAbusePhone: parsed?.registrar_abuse_contact_phone || parsed?.registrarAbuseContactPhone,
     
     registrationDate: parsed?.registrationDate || parsed?.creationDate || parsed?.creation_date || parsed?.createdDate || parsed?.registration_time,
     expirationDate: parsed?.expirationDate || parsed?.registryExpiryDate || parsed?.registry_expiry_date || parsed?.expiryDate || parsed?.expiration_time,
@@ -162,29 +172,37 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     
     // 联系人信息
     registrant: {
-      name: parsed?.registrant_name,
-      organization: parsed?.registrant_organization,
-      email: parsed?.registrant_email,
-      phone: parsed?.registrant_phone,
-      country: parsed?.registrant_country,
+      name: pickValue("registrant_name", "registrant", "registrant_contact", "registrant_contact_name"),
+      organization: pickValue("registrant_organization", "registrant_org", "registrant_organization_name"),
+      email: pickValue("registrant_email", "registrant_contact_email", "registrant_email_address"),
+      phone: pickValue("registrant_phone", "registrant_contact_phone", "registrant_phone_number", "registrant_tel"),
+      country: pickValue("registrant_country", "registrant_country_code"),
       ...getContact("registrant")
     },
     admin: {
-      name: parsed?.admin_name,
-      organization: parsed?.admin_organization,
-      email: parsed?.admin_email,
-      phone: parsed?.admin_phone,
-      country: parsed?.admin_country,
+      name: pickValue("admin_name", "administrative_contact", "admin", "admin_contact_name", "administrative_contact_name"),
+      organization: pickValue("admin_organization", "admin_org", "administrative_contact_organization"),
+      email: pickValue("admin_email", "admin_contact_email", "administrative_contact_email"),
+      phone: pickValue("admin_phone", "admin_contact_phone", "administrative_contact_phone"),
+      country: pickValue("admin_country", "administrative_contact_country"),
       ...getContact("admin")
     },
     tech: {
-      name: parsed?.tech_name,
-      organization: parsed?.tech_organization,
-      email: parsed?.tech_email,
-      phone: parsed?.tech_phone,
-      country: parsed?.tech_country,
+      name: pickValue("tech_name", "technical_contact", "tech", "tech_contact_name"),
+      organization: pickValue("tech_organization", "tech_org", "technical_contact_organization"),
+      email: pickValue("tech_email", "tech_contact_email", "technical_contact_email"),
+      phone: pickValue("tech_phone", "tech_contact_phone", "technical_contact_phone"),
+      country: pickValue("tech_country", "technical_contact_country"),
       ...getContact("tech")
     },
+    billing: {
+      name: pickValue("billing_name", "billing_contact_name"),
+      organization: pickValue("billing_organization", "billing_org", "billing_contact_organization"),
+      email: pickValue("billing_email", "billing_contact_email"),
+      phone: pickValue("billing_phone", "billing_contact_phone"),
+      country: pickValue("billing_country", "billing_contact_country"),
+      ...getContact("billing")
+    }
   }
 
   const daysRemaining = calculateDaysRemaining(normalized.expirationDate)
@@ -235,65 +253,71 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
       URL.revokeObjectURL(url)
   }
 
-  // 渲染联系人卡片的辅助组件
-  const ContactCard = ({ title, contact }: { title: string, contact: any }) => {
-    if (!contact || Object.keys(contact).length === 0) return null
-    
-    // 尝试提取常用字段，兼容不同解析格式
-    const name = contact.name || contact.Name
-    const org = contact.organization || contact.org || contact.Organization
-    const email = contact.email || contact.Email || contact["e-mail"]
-    const phone = contact.phone || contact.Phone || contact["phone-number"]
-    const street = contact.street || contact.address || contact.Street
-    const city = contact.city || contact.City
-    const state = contact.state || contact.State || contact.province
-    const country = contact.country || contact.Country || contact["country-code"]
+  const ContactCard = ({ title, contact, alwaysShow = false }: { title: string, contact: any, alwaysShow?: boolean }) => {
+    if (!contact || Object.keys(contact).length === 0) {
+      if (!alwaysShow) return null
+    }
+
+    const name = contact?.name || contact?.Name
+    const org = contact?.organization || contact?.org || contact?.Organization
+    const email = contact?.email || contact?.Email || contact?.["e-mail"]
+    const phone = contact?.phone || contact?.Phone || contact?.["phone-number"]
+    const street = contact?.street || contact?.address || contact?.Street
+    const city = contact?.city || contact?.City
+    const state = contact?.state || contact?.State || contact?.province
+    const country = contact?.country || contact?.Country || contact?.["country-code"]
 
     const hasData = name || org || email || phone || street || city || country
 
-    if (!hasData) return null
+    if (!hasData && !alwaysShow) return null
 
     return (
-        <Card className="glass-card border-none h-full">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                    <User className="w-5 h-5 text-primary" />
-                    {title}
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-                {(name || org) && (
-                    <div className="flex items-start gap-2">
-                        <User className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div>
-                            {name && <p className="font-medium">{name}</p>}
-                            {org && <p className="text-muted-foreground">{org}</p>}
-                        </div>
-                    </div>
-                )}
-                {email && (
-                     <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-mono text-xs">{maskEmail(email)}</span>
-                     </div>
-                )}
-                 {phone && (
-                     <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-mono text-xs">{phone}</span>
-                     </div>
-                )}
-                {(street || city || country) && (
-                     <div className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div className="text-muted-foreground">
-                            {street && <p>{street}</p>}
-                            <p>{[city, state, country].filter(Boolean).join(", ")}</p>
-                        </div>
-                     </div>
-                )}
-            </CardContent>
-        </Card>
+      <Card className="glass-card border-none h-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <User className="w-5 h-5 text-primary" />
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {hasData ? (
+            <>
+              {(name || org) && (
+                <div className="flex items-start gap-2">
+                  <User className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    {name && <p className="font-medium">{name}</p>}
+                    {org && <p className="text-muted-foreground">{org}</p>}
+                  </div>
+                </div>
+              )}
+              {email && (
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-mono text-xs">{maskEmail(email)}</span>
+                </div>
+              )}
+              {phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-mono text-xs">{phone}</span>
+                </div>
+              )}
+              {(street || city || country) && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <div className="text-muted-foreground">
+                    {street && <p>{street}</p>}
+                    <p>{[city, state, country].filter(Boolean).join(", ")}</p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">暂无公开信息</p>
+          )}
+        </CardContent>
+      </Card>
     )
   }
 
@@ -413,15 +437,31 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
 
             <Separator />
 
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                     <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">注册商</h4>
                     <p className="font-medium">{normalized.registrar || "N/A"}</p>
                     {normalized.registrarIanaId && <p className="text-muted-foreground text-xs">IANA ID: {normalized.registrarIanaId}</p>}
+                    {(normalized.registrarAbuseEmail || normalized.registrarAbusePhone) && (
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        <p className="font-semibold">滥用联系</p>
+                        {normalized.registrarAbuseEmail && (
+                          <p className="font-mono break-all">{maskEmail(normalized.registrarAbuseEmail)}</p>
+                        )}
+                        {normalized.registrarAbusePhone && (
+                          <p className="font-mono break-all">{normalized.registrarAbusePhone}</p>
+                        )}
+                      </div>
+                    )}
                 </div>
                 <div>
                      <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">Whois 服务器</h4>
                      <p className="font-mono text-xs">{normalized.whoisServer || "N/A"}</p>
+                     {normalized.dnssec && (
+                       <p className="mt-2 text-xs text-muted-foreground">
+                         DNSSEC: <span className="font-mono">{normalized.dnssec}</span>
+                       </p>
+                     )}
                 </div>
                  {normalized.registrarUrl && (
                     <div className="col-span-1 sm:col-span-2">
@@ -450,16 +490,18 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
         </Card>
       </div>
       
-      {/* Contact Info Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          <div className="md:col-span-1">
-             <ContactCard title="注册人 (Registrant)" contact={normalized.registrant} />
+             <ContactCard title="注册人 (Registrant)" contact={normalized.registrant} alwaysShow />
          </div>
          <div className="md:col-span-1">
-             <ContactCard title="管理联系人 (Admin)" contact={normalized.admin} />
+             <ContactCard title="管理联系人 (Admin)" contact={normalized.admin} alwaysShow />
          </div>
          <div className="md:col-span-1">
-             <ContactCard title="技术联系人 (Tech)" contact={normalized.tech} />
+             <ContactCard title="技术联系人 (Tech)" contact={normalized.tech} alwaysShow />
+         </div>
+         <div className="md:col-span-1">
+             <ContactCard title="账单联系人 (Billing)" contact={normalized.billing} />
          </div>
       </div>
 

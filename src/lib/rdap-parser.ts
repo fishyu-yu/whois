@@ -109,16 +109,24 @@ function parseEvents(events: RDAPEvent[] | undefined): { [key: string]: string }
   if (!events) return result;
 
   for (const event of events) {
-    switch (event.eventAction.toLowerCase()) {
+    const action = (event.eventAction || '').toLowerCase();
+    switch (action) {
       case 'registration':
+      case 'created':
         result.creation_date = event.eventDate;
         break;
       case 'expiration':
+      case 'expiry':
         result.registry_expiry_date = event.eventDate;
         break;
       case 'last changed':
       case 'last update of rdap database':
+      case 'last update of whois database':
+      case 'last update':
+      case 'update':
         result.updated_date = event.eventDate;
+        break;
+      default:
         break;
     }
   }
@@ -174,6 +182,27 @@ export function parseRDAPResponse(rdapData: RDAPResponse): ParsedRDAPData {
       if (registrarEntity.port43) {
         result.registrar_whois_server = registrarEntity.port43;
       }
+      // 解析注册商网址（常见为 about / related 链接）
+      if (!result.registrar_url && registrarEntity.links && Array.isArray(registrarEntity.links)) {
+        const link = registrarEntity.links.find(link =>
+          (link.rel === 'about' || link.rel === 'related') &&
+          typeof link.href === 'string'
+        );
+        if (link?.href) {
+          result.registrar_url = link.href;
+        }
+      }
+      // 解析注册商 IANA ID（部分 RDAP 在 publicIds 中提供）
+      if (!result.registrar_iana_id && Array.isArray(registrarEntity.publicIds)) {
+        for (const pid of registrarEntity.publicIds) {
+          if (!pid || typeof pid !== 'object') continue;
+          const t = String((pid as any).type || '').toLowerCase();
+          if (t.includes('iana') && t.includes('registrar')) {
+            result.registrar_iana_id = String((pid as any).identifier || (pid as any).id || '').trim();
+            if (result.registrar_iana_id) break;
+          }
+        }
+      }
     }
 
     // 查找注册人
@@ -221,6 +250,23 @@ export function parseRDAPResponse(rdapData: RDAPResponse): ParsedRDAPData {
       result.billing_phone = billingInfo.phone;
       result.billing_country = billingInfo.country;
     }
+
+    // 查找滥用联系人（通常用于 registrar_abuse_contact_*）
+    const abuseEntity = findEntityByRole(rdapData.entities, 'abuse');
+    if (abuseEntity && abuseEntity.vcardArray) {
+      const abuseInfo = parseVCard(abuseEntity.vcardArray);
+      if (abuseInfo.email) {
+        result.registrar_abuse_contact_email = abuseInfo.email;
+      }
+      if (abuseInfo.phone) {
+        result.registrar_abuse_contact_phone = abuseInfo.phone;
+      }
+    }
+  }
+
+  // 回退：如果实体中未提供 port43，则尝试使用顶层 port43 作为 WHOIS 服务器
+  if (!result.registrar_whois_server && rdapData.port43) {
+    result.registrar_whois_server = rdapData.port43;
   }
 
   return result;
