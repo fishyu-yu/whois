@@ -1,25 +1,23 @@
 "use client"
 
 import { ReactNode } from "react"
+import { cn } from "@/lib/utils"
 
-export function LayoutWrapper({ children }: { children: ReactNode }) {
+export function LayoutWrapper({ children, className }: { children: ReactNode, className?: string }) {
   return (
-    <main className="min-h-screen relative overflow-hidden bg-background selection:bg-primary/20">
-      {/* Background Gradients */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[120px]" />
-        <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
-      </div>
+    <div className={cn("min-h-screen flex flex-col bg-background relative selection:bg-primary/20", className)}>
+       {/* Subtle background glow */}
+       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-primary/5 rounded-full blur-[120px] opacity-50 dark:opacity-20" />
+       </div>
+       
+       <div className="relative z-10 flex-1 flex flex-col">
+          {children}
+       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-8 flex flex-col min-h-screen">
-        {children}
-        
-        {/* Footer */}
-        <footer className="py-8 text-center text-sm text-muted-foreground animate-in fade-in duration-1000 delay-500 mt-auto">
-          <p>© {new Date().getFullYear()} Whale Education Co.,Ltd Copyright All</p>
-        </footer>
-      </div>
-    </main>
+       <footer className="relative z-10 py-8 text-center text-sm text-muted-foreground mt-auto">
+          <p>© {new Date().getFullYear()} Whale Education Co.,Ltd. All rights reserved.</p>
+       </footer>
+    </div>
   )
 }

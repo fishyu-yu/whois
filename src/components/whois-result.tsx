@@ -4,6 +4,7 @@
  * 修改记录：
  * - 2025-12-15: 重构为现代 UI 风格
  * - 2025-12-15: 完善详细信息展示，包括联系人、注册商等，并增加导出功能
+ * - 2025-12-16: 极简主义设计重构 (Apple Style)
  */
 "use client"
 
@@ -13,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Copy, Share2, Clock, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Building, Mail, Phone, MapPin, Download } from "lucide-react"
+import { Copy, Share2, Clock, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Building, Mail, Phone, MapPin, Download, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // RDAP/EPP 域名状态字典
@@ -73,7 +74,7 @@ const formatDate = (dateStr?: string) => {
   try {
     return new Date(dateStr).toLocaleDateString("zh-CN", {
       year: "numeric",
-      month: "long",
+      month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit"
@@ -129,14 +130,11 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     return undefined
   }
 
-  // 辅助函数：从 parsed 对象中提取嵌套字段
-  // 许多 Whois 解析库会将联系人信息放在 contacts 或类似结构中
   const getContact = (type: string) => {
       const contacts = parsed?.contacts || parsed?.contact || {}
       return contacts[type] || contacts[type.toLowerCase()] || null
   }
 
-  // 整合并标准化数据
   const normalized = {
     domain: parsed?.domain || parsed?.domainName || parsed?.domain_name,
     registrar: parsed?.registrar || parsed?.sponsoringRegistrar || parsed?.sponsoring_registrar,
@@ -155,7 +153,6 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     nameServers: (() => {
       const ns = parsed?.nameServers || parsed?.nameServer || parsed?.name_server || parsed?.name_servers || parsed?.nserver
       if (!ns) return []
-      // 有些返回是字符串（空格分隔），有些是数组
       if (typeof ns === 'string') return ns.split(/\s+/)
       return Array.isArray(ns) ? ns : [ns]
     })(),
@@ -163,14 +160,12 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     domainStatus: (() => {
       const st = parsed?.domainStatus || parsed?.domain_status || parsed?.status || parsed?.state
       if (!st) return []
-      // 同样处理字符串或数组
       if (typeof st === 'string') return st.split(/\s+/)
       return Array.isArray(st) ? st : [st]
     })(),
     
     dnssec: parsed?.dnssec || parsed?.DNSSEC,
     
-    // 联系人信息
     registrant: {
       name: pickValue("registrant_name", "registrant", "registrant_contact", "registrant_contact_name"),
       organization: pickValue("registrant_organization", "registrant_org", "registrant_organization_name"),
@@ -206,7 +201,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
   }
 
   const daysRemaining = calculateDaysRemaining(normalized.expirationDate)
-  
+
   const handleCopy = () => {
     navigator.clipboard.writeText(raw)
     setCopied(true)
@@ -223,7 +218,6 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
           type = "application/json"
           filename += ".json"
       } else {
-          // 简单的 CSV 导出逻辑 (扁平化部分关键字段)
           const rows = [
               ["Field", "Value"],
               ["Domain Name", normalized.domain],
@@ -235,7 +229,7 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
               ["Status", normalized.domainStatus.join("; ")],
               ["Registrant Name", normalized.registrant.name || normalized.registrant.organization || ""],
               ["Registrant Email", normalized.registrant.email || ""],
-              ["Raw Data", `"${raw.replace(/"/g, '""')}"`] // 简单的 CSV 转义
+              ["Raw Data", `"${raw.replace(/"/g, '""')}"`]
           ]
           content = rows.map(r => r.join(",")).join("\n")
           type = "text/csv"
@@ -272,41 +266,43 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     if (!hasData && !alwaysShow) return null
 
     return (
-      <Card className="glass-card border-none h-full">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+      <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 h-full transition-all hover:shadow-md">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+          <User className="w-4 h-4" />
+          {title}
+        </h3>
+        
+        <div className="space-y-3">
           {hasData ? (
             <>
               {(name || org) && (
-                <div className="flex items-start gap-2">
-                  <User className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <div>
-                    {name && <p className="font-medium">{name}</p>}
-                    {org && <p className="text-muted-foreground">{org}</p>}
-                  </div>
+                <div>
+                   {name && <div className="font-medium text-foreground">{name}</div>}
+                   {org && <div className="text-sm text-muted-foreground">{org}</div>}
                 </div>
               )}
-              {email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-mono text-xs">{maskEmail(email)}</span>
-                </div>
+              
+              {(email || phone) && (
+                 <div className="pt-2 space-y-2">
+                    {email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="font-mono text-xs">{maskEmail(email)}</span>
+                      </div>
+                    )}
+                    {phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="font-mono text-xs">{phone}</span>
+                      </div>
+                    )}
+                 </div>
               )}
-              {phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-mono text-xs">{phone}</span>
-                </div>
-              )}
+
               {(street || city || country) && (
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <div className="text-muted-foreground">
+                <div className="pt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <div>
                     {street && <p>{street}</p>}
                     <p>{[city, state, country].filter(Boolean).join(", ")}</p>
                   </div>
@@ -314,113 +310,127 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
               )}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">暂无公开信息</p>
+             <div className="flex flex-col items-center justify-center py-6 text-muted-foreground/50">
+               <ShieldCheck className="w-8 h-8 mb-2 opacity-20" />
+               <p className="text-sm">隐私保护已开启</p>
+             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+    <div className="w-full max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-12">
       
-      {/* Header Card */}
-      <div className="glass-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 mb-2 break-all">
+          <h1 className="text-4xl font-bold text-foreground tracking-tight mb-2">
             {normalized.domain || "查询结果"}
-          </h2>
-          <div className="flex flex-wrap gap-2 items-center text-muted-foreground">
+          </h1>
+          <div className="flex flex-wrap gap-3 items-center">
             {normalized.registrar && (
-              <span className="flex items-center gap-1.5 text-sm bg-secondary/30 px-3 py-1 rounded-full border border-secondary/20">
-                <Globe className="w-3.5 h-3.5" />
+              <Badge variant="secondary" className="font-normal text-sm px-3 py-1 bg-secondary/50 hover:bg-secondary/70">
                 {normalized.registrar}
-              </span>
+              </Badge>
             )}
             {daysRemaining !== null && (
-              <span className={cn(
-                "flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border",
-                daysRemaining < 30 ? "bg-red-500/10 text-red-600 border-red-500/20" : "bg-green-500/10 text-green-600 border-green-500/20"
+              <Badge variant="outline" className={cn(
+                "font-normal text-sm px-3 py-1 border-0",
+                daysRemaining < 30 ? "bg-red-500/10 text-red-600" : "bg-green-500/10 text-green-600"
               )}>
-                <Clock className="w-3.5 h-3.5" />
                 {daysRemaining > 0 ? `剩余 ${daysRemaining} 天` : "已过期"}
-              </span>
+              </Badge>
             )}
           </div>
         </div>
         
-        <div className="flex gap-2 flex-wrap">
-           <Button variant="outline" size="sm" onClick={() => handleExport('json')} className="h-9 gap-2">
+        <div className="flex gap-2">
+           <Button variant="ghost" size="sm" onClick={() => handleExport('json')} className="h-9 gap-2 rounded-full hover:bg-secondary">
              <Download className="w-4 h-4" />
              JSON
            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('csv')} className="h-9 gap-2">
+            <Button variant="ghost" size="sm" onClick={() => handleExport('csv')} className="h-9 gap-2 rounded-full hover:bg-secondary">
              <Download className="w-4 h-4" />
              CSV
            </Button>
-           <Button variant="outline" size="sm" onClick={handleCopy} className="h-9 gap-2">
+           <Button variant="ghost" size="sm" onClick={handleCopy} className="h-9 gap-2 rounded-full hover:bg-secondary">
              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
              复制
            </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Main Info Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Dates Card */}
-        <Card className="glass-card border-none md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              关键日期
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">注册时间</p>
-              <p className="font-mono text-sm">{formatDate(normalized.registrationDate)}</p>
+        <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 lg:col-span-1">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-6 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            关键日期
+          </h3>
+          
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">注册时间</p>
+              <p className="text-lg font-medium font-mono">{formatDate(normalized.registrationDate)}</p>
             </div>
-            <Separator />
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">过期时间</p>
-              <p className="font-mono text-sm">{formatDate(normalized.expirationDate)}</p>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">过期时间</p>
+              <div className="flex items-center gap-2">
+                 <p className="text-lg font-medium font-mono">{formatDate(normalized.expirationDate)}</p>
+                 {daysRemaining !== null && daysRemaining < 30 && (
+                   <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger>
+                         <AlertTriangle className="w-4 h-4 text-orange-500" />
+                       </TooltipTrigger>
+                       <TooltipContent>域名即将过期</TooltipContent>
+                     </Tooltip>
+                   </TooltipProvider>
+                 )}
+              </div>
             </div>
-            <Separator />
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">更新时间</p>
-              <p className="font-mono text-sm">{formatDate(normalized.updatedDate)}</p>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">更新时间</p>
+              <p className="text-lg font-medium font-mono">{formatDate(normalized.updatedDate)}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Status & Registrar Info Card */}
-        <Card className="glass-card border-none md:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-              域名状态 & 注册商
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-6">
+        <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 lg:col-span-2">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-6 flex items-center gap-2">
+            <Globe className="w-4 h-4" />
+            域名信息
+          </h3>
+
+          <div className="grid md:grid-cols-2 gap-8">
             <div>
-                <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">状态</h4>
+                <p className="text-sm text-muted-foreground mb-3">域名状态</p>
                 <div className="flex flex-wrap gap-2">
                 {normalized.domainStatus.length > 0 ? (
                     normalized.domainStatus.map((status: string, i: number) => {
                     const info = getStatusInfo(status)
-                    let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "outline"
+                    const isNormal = info.severity === 0
+                    const isWarning = info.severity === 2
+                    const isDanger = info.severity >= 3
                     
-                    if (info.severity === 0) badgeVariant = "default" // Normal/Active
-                    else if (info.severity === 1) badgeVariant = "secondary" // Prohibited/Locked
-                    else if (info.severity >= 2) badgeVariant = "destructive" // Hold/Delete
-
                     return (
                         <TooltipProvider key={i}>
                         <Tooltip>
                             <TooltipTrigger>
-                            <Badge variant={badgeVariant} className="px-3 py-1 text-sm font-normal cursor-help">
+                            <span className={cn(
+                                "px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-help",
+                                isNormal && "bg-green-500/10 text-green-700 dark:text-green-400",
+                                isWarning && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+                                isDanger && "bg-red-500/10 text-red-700 dark:text-red-400",
+                                info.severity === 1 && "bg-secondary text-secondary-foreground"
+                            )}>
                                 {info.label}
-                            </Badge>
+                            </span>
                             </TooltipTrigger>
                             <TooltipContent>
                             <p>{info.description || info.code}</p>
@@ -435,92 +445,59 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                 </div>
             </div>
 
-            <Separator />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                    <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">注册商</h4>
-                    <p className="font-medium">{normalized.registrar || "N/A"}</p>
-                    {normalized.registrarIanaId && <p className="text-muted-foreground text-xs">IANA ID: {normalized.registrarIanaId}</p>}
-                    {(normalized.registrarAbuseEmail || normalized.registrarAbusePhone) && (
-                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                        <p className="font-semibold">滥用联系</p>
-                        {normalized.registrarAbuseEmail && (
-                          <p className="font-mono break-all">{maskEmail(normalized.registrarAbuseEmail)}</p>
-                        )}
-                        {normalized.registrarAbusePhone && (
-                          <p className="font-mono break-all">{normalized.registrarAbusePhone}</p>
-                        )}
-                      </div>
-                    )}
-                </div>
-                <div>
-                     <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">Whois 服务器</h4>
-                     <p className="font-mono text-xs">{normalized.whoisServer || "N/A"}</p>
-                     {normalized.dnssec && (
-                       <p className="mt-2 text-xs text-muted-foreground">
-                         DNSSEC: <span className="font-mono">{normalized.dnssec}</span>
-                       </p>
-                     )}
-                </div>
-                 {normalized.registrarUrl && (
-                    <div className="col-span-1 sm:col-span-2">
-                         <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">注册商网址</h4>
-                         <a href={normalized.registrarUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate block">
-                             {normalized.registrarUrl}
-                         </a>
+            <div>
+                <p className="text-sm text-muted-foreground mb-2">注册商</p>
+                <p className="font-medium text-base">{normalized.registrar || "N/A"}</p>
+                {normalized.registrarIanaId && <p className="text-muted-foreground text-xs mt-1">IANA ID: {normalized.registrarIanaId}</p>}
+                
+                {(normalized.registrarAbuseEmail || normalized.registrarAbusePhone) && (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">滥用投诉</p>
+                        {normalized.registrarAbuseEmail && <p className="text-xs font-mono">{maskEmail(normalized.registrarAbuseEmail)}</p>}
+                        {normalized.registrarAbusePhone && <p className="text-xs font-mono">{normalized.registrarAbusePhone}</p>}
                     </div>
                 )}
-             </div>
-
-             {normalized.nameServers.length > 0 && (
-              <div>
-                 <h4 className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">DNS 服务器</h4>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            </div>
+            
+            <div className="md:col-span-2">
+               <p className="text-sm text-muted-foreground mb-3">Name Servers</p>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                    {normalized.nameServers.map((ns: string, i: number) => (
-                     <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/20 text-sm font-mono break-all">
-                       <Server className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                     <div key={i} className="flex items-center gap-2 text-sm font-mono text-foreground/80">
+                       <Server className="w-3.5 h-3.5 text-muted-foreground/50" />
                        {ns}
                      </div>
                    ))}
-                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+               </div>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         <div className="md:col-span-1">
-             <ContactCard title="注册人 (Registrant)" contact={normalized.registrant} alwaysShow />
-         </div>
-         <div className="md:col-span-1">
-             <ContactCard title="管理联系人 (Admin)" contact={normalized.admin} alwaysShow />
-         </div>
-         <div className="md:col-span-1">
-             <ContactCard title="技术联系人 (Tech)" contact={normalized.tech} alwaysShow />
-         </div>
-         <div className="md:col-span-1">
-             <ContactCard title="账单联系人 (Billing)" contact={normalized.billing} />
-         </div>
+      {/* Contact Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+         <ContactCard title="注册人" contact={normalized.registrant} alwaysShow />
+         <ContactCard title="管理员" contact={normalized.admin} alwaysShow />
+         <ContactCard title="技术联系" contact={normalized.tech} alwaysShow />
+         <ContactCard title="账单联系" contact={normalized.billing} />
       </div>
 
       {/* Raw Data Toggle */}
-      <div className="glass-card rounded-2xl overflow-hidden">
+      <div className="rounded-2xl border border-border/50 overflow-hidden bg-card shadow-sm">
         <button 
           onClick={() => setShowRaw(!showRaw)}
-          className="w-full flex items-center justify-between p-4 bg-secondary/10 hover:bg-secondary/20 transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
         >
-          <span className="font-medium flex items-center gap-2">
+          <span className="font-medium flex items-center gap-2 text-sm text-muted-foreground">
             <Server className="w-4 h-4" />
-            原始 Whois 数据
+            查看原始数据
           </span>
-          {showRaw ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {showRaw ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
         
         {showRaw && (
-          <div className="p-0 bg-zinc-950 text-zinc-50 overflow-x-auto">
-             <pre className="p-4 text-xs md:text-sm font-mono leading-relaxed whitespace-pre-wrap">
+          <div className="border-t border-border/50 bg-secondary/10 overflow-x-auto max-h-[500px]">
+             <pre className="p-6 text-xs font-mono leading-relaxed whitespace-pre-wrap text-muted-foreground selection:bg-primary/20">
                {raw || JSON.stringify(data, null, 2)}
              </pre>
           </div>

@@ -4,6 +4,7 @@
  * 修改记录：
  * - 2025-12-15: 重构为现代 UI 风格，添加动态背景和布局
  * - 2025-12-15: 使用 LayoutWrapper 和 Header 组件统一 UI
+ * - 2025-12-16: 极简主义设计重构
  */
 "use client"
 
@@ -13,7 +14,7 @@ import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { History } from "lucide-react"
+import { History, X, Search, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface WhoisData {
@@ -131,28 +132,53 @@ export default function Home() {
         isHistoryActive={showHistory}
       />
 
-      <div className="flex-1 flex flex-col items-center w-full max-w-5xl mx-auto transition-all duration-500">
+      <div className="flex-1 flex flex-col items-center w-full transition-all duration-700">
         
+        {/* Search Section */}
         <div className={cn(
-          "text-center space-y-6 mb-12 transition-all duration-700 w-full ease-out",
-          currentResult ? "translate-y-0" : "translate-y-[10vh]"
+          "w-full px-4 transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+          currentResult 
+            ? "pt-8 pb-4 max-w-5xl mx-auto" 
+            : "flex-1 flex flex-col justify-center items-center -mt-20 max-w-3xl mx-auto"
         )}>
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70 pb-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            探索域名的<br className="md:hidden" /> <span className="text-gradient">数字足迹</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-700 delay-100">
-            极速查询域名、IP 地址和 ASN 信息。深入了解互联网基础设施的每一个角落。
-          </p>
+          {!currentResult && (
+             <div className="text-center space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
+                  Whois<span className="text-primary">.Lookup</span>
+                </h1>
+                <p className="text-xl text-muted-foreground max-w-lg mx-auto leading-relaxed font-light">
+                  Simple, fast, and comprehensive domain intelligence.
+                </p>
+             </div>
+          )}
 
-          <div className="pt-4 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
-            <WhoisForm onSubmit={handleQuery} loading={loading} />
+          <div className={cn(
+            "w-full transition-all duration-500",
+            !currentResult && "animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-100"
+          )}>
+            <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={currentResult?.query} />
           </div>
+
+          {!currentResult && history.length > 0 && (
+             <div className="mt-8 flex flex-wrap justify-center gap-2 animate-in fade-in duration-1000 delay-300">
+                <span className="text-sm text-muted-foreground mr-2 py-1">Recent:</span>
+                {history.slice(0, 3).map((item, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => handleQuery(item.query, item.type)}
+                    className="text-sm px-3 py-1 rounded-full bg-secondary/30 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {item.query}
+                  </button>
+                ))}
+             </div>
+          )}
         </div>
 
         {/* Result Area */}
         <div className={cn(
-          "w-full transition-all duration-700 delay-100",
-          currentResult ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12 pointer-events-none absolute"
+          "w-full px-4 pb-12 transition-all duration-700 delay-100",
+          currentResult ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12 pointer-events-none hidden"
         )}>
           {currentResult && (
               <WhoisResult 
@@ -164,42 +190,59 @@ export default function Home() {
         </div>
       </div>
 
-      {/* History Sidebar/Overlay */}
-      {showHistory && (
-        <>
-          <div className="fixed inset-0 bg-background/20 backdrop-blur-sm z-40" onClick={() => setShowHistory(false)} />
-          <div className="fixed inset-y-0 right-0 w-80 bg-background/90 backdrop-blur-xl border-l border-border shadow-2xl z-50 p-6 transform transition-transform duration-300 animate-in slide-in-from-right">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <History className="w-5 h-5 text-primary" />
-                搜索历史
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>关闭</Button>
-            </div>
-            <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-100px)] custom-scrollbar pr-2">
-              {history.map((item, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    handleQuery(item.query, item.type)
-                    setShowHistory(false)
-                  }}
-                  className="w-full text-left p-3 rounded-xl hover:bg-secondary/50 transition-colors group border border-transparent hover:border-border/50"
-                >
-                  <div className="font-medium group-hover:text-primary transition-colors truncate">{item.query}</div>
-                  <div className="text-xs text-muted-foreground flex justify-between mt-1">
-                    <span className="uppercase bg-secondary/30 px-1.5 py-0.5 rounded text-[10px]">{item.type}</span>
-                    <span>{new Date(item.timestamp).toLocaleDateString()}</span>
-                  </div>
-                </button>
-              ))}
-              {history.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">暂无历史记录</p>
-              )}
-            </div>
+      {/* History Sidebar/Overlay - Apple Style */}
+      <div className={cn(
+        "fixed inset-0 z-50 transition-all duration-300",
+        showHistory ? "visible" : "invisible pointer-events-none"
+      )}>
+        <div 
+          className={cn(
+            "absolute inset-0 bg-background/20 backdrop-blur-sm transition-opacity duration-300",
+            showHistory ? "opacity-100" : "opacity-0"
+          )} 
+          onClick={() => setShowHistory(false)} 
+        />
+        
+        <div className={cn(
+          "absolute inset-y-0 right-0 w-full max-w-sm bg-background/80 backdrop-blur-xl border-l border-border shadow-2xl p-6 transform transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          showHistory ? "translate-x-0" : "translate-x-full"
+        )}>
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="font-semibold text-xl tracking-tight flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              History
+            </h3>
+            <Button variant="ghost" size="icon" className="rounded-full hover:bg-secondary" onClick={() => setShowHistory(false)}>
+              <X className="w-5 h-5" />
+            </Button>
           </div>
-        </>
-      )}
+          
+          <div className="space-y-2 overflow-y-auto h-[calc(100vh-120px)] -mr-4 pr-4">
+            {history.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  handleQuery(item.query, item.type)
+                  setShowHistory(false)
+                }}
+                className="w-full text-left p-4 rounded-2xl hover:bg-secondary/50 transition-all group border border-transparent hover:border-border/50"
+              >
+                <div className="font-medium text-lg group-hover:text-primary transition-colors truncate">{item.query}</div>
+                <div className="text-xs text-muted-foreground flex justify-between mt-1 font-medium">
+                  <span className="uppercase tracking-wider opacity-70">{item.type}</span>
+                  <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                </div>
+              </button>
+            ))}
+            {history.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50">
+                 <History className="w-12 h-12 mb-4 opacity-20" />
+                 <p className="text-sm">No history yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </LayoutWrapper>
   )
 }

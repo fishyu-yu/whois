@@ -4,6 +4,7 @@
  * 修改记录：
  * - 2025-12-15: 重构为现代 UI 风格，匹配首页设计
  * - 2025-12-15: 使用 LayoutWrapper 和 Header 组件统一 UI
+ * - 2025-12-16: 极简主义设计重构
  */
 "use client"
 
@@ -13,6 +14,7 @@ import { WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Header } from "@/components/header"
+import { Loader2 } from "lucide-react"
 
 interface WhoisData {
   query: string
@@ -91,16 +93,16 @@ export default function DomainPage() {
     <LayoutWrapper>
       <Header showBack={true} />
 
-      <div className="flex-1 flex flex-col items-center w-full max-w-5xl mx-auto">
-        <div className="w-full mb-8">
+      <div className="flex-1 flex flex-col items-center w-full max-w-5xl mx-auto px-4 pt-8 pb-12 transition-all duration-700">
+        <div className="w-full mb-12">
             <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={domain} />
         </div>
 
-        <div className="w-full transition-all duration-700">
+        <div className="w-full transition-all duration-700 min-h-[400px]">
           {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground animate-pulse">
-                  <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                  <p>正在查询 {domain} 的信息...</p>
+              <div className="flex flex-col items-center justify-center py-32 gap-6 text-muted-foreground">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary/50" />
+                  <p className="text-lg font-light">Loading intelligence for <span className="font-medium text-foreground">{domain}</span>...</p>
               </div>
           ) : currentResult ? (
               <WhoisResult 
