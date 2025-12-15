@@ -144,10 +144,10 @@ export default function Home() {
           {!currentResult && (
              <div className="text-center space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
-                  Whois<span className="text-primary">.Lookup</span>
+                  鲸探<span className="text-primary">·域名查询</span>
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-lg mx-auto leading-relaxed font-light">
-                  简洁、快速且全面的域名情报查询工具。
+                  为你整理好每一个域名的注册信息与网络画像。
                 </p>
              </div>
           )}
@@ -237,7 +237,7 @@ export default function Home() {
             {history.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50">
                  <History className="w-12 h-12 mb-4 opacity-20" />
-                 <p className="text-sm">暂无历史记录</p>
+                 <p className="text-sm">暂无历史记录，先随便查一个试试？</p>
               </div>
             )}
           </div>

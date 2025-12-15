@@ -123,7 +123,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
             ref={inputRef}
             type="text"
             className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-muted-foreground/50 py-6 h-16 w-full"
-            placeholder="输入域名、IP地址或ASN号码..."
+            placeholder="请输入要查询的域名、IP 或 ASN 号码"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setIsFocused(true)}
@@ -160,7 +160,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
       </form>
 
       <div className="flex flex-wrap gap-2 justify-center text-sm text-muted-foreground/80 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("example.com")}>example.com</span>
+        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("baidu.com")}>baidu.com</span>
         <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("8.8.8.8")}>8.8.8.8</span>
         <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("AS15169")}>AS15169</span>
       </div>

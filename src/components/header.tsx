@@ -38,7 +38,7 @@ export function Header({
               <Search className="w-5 h-5" />
             </div>
             <span className="font-semibold text-lg tracking-tight">
-              Whois
+              鲸探 Whois
             </span>
           </Link>
         </div>
