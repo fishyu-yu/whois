@@ -14,7 +14,7 @@ import { detectQueryType, WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Header } from "@/components/header"
-import { Loader2, Radar } from "lucide-react"
+import { Loader2, Search } from "lucide-react"
 
 interface WhoisData {
   query: string
@@ -105,10 +105,10 @@ export default function DomainPage() {
     <LayoutWrapper>
       <Header showBack={true} />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-4 pb-12 pt-8 sm:px-6">
-        <div className="panel loading-bridge mb-10 w-full rounded-lg p-4 sm:p-6">
-            <div className="mb-5 flex items-center gap-2 text-sm font-semibold">
-              <Radar className="size-4 text-primary" />
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center px-4 pb-12 pt-8 sm:px-6">
+        <div className="loading-bridge mb-8 w-full pt-1">
+            <div className="mb-3 flex items-center gap-2 px-1 text-sm font-medium text-muted-foreground">
+              <Search className="size-4" />
               继续查询
             </div>
             <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={domain} />
@@ -116,8 +116,8 @@ export default function DomainPage() {
 
         <div className="min-h-[400px] w-full transition-all duration-500">
           {loading ? (
-              <div className="panel loading-bridge flex flex-col items-center justify-center gap-5 rounded-lg border-dashed py-28 text-muted-foreground">
-                  <div className="flex size-12 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+              <div className="quiet-surface loading-bridge flex flex-col items-center justify-center gap-5 rounded-lg py-24 text-muted-foreground">
+                  <div className="flex size-11 items-center justify-center rounded-lg bg-muted">
                     <Loader2 className="size-5 animate-spin text-primary" />
                   </div>
                   <div className="text-center">

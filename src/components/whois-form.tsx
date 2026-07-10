@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight, Sparkles } from "lucide-react"
+import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight } from "lucide-react"
 import { validateDomain } from "@/lib/domain-utils"
 import { cn } from "@/lib/utils"
 
@@ -105,18 +105,17 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
+    <div className="mx-auto w-full max-w-4xl space-y-4">
       <form onSubmit={handleSubmit} className="group relative">
         <label htmlFor="whois-query" className="sr-only">域名、IP 或 ASN</label>
         <div 
           className={cn(
-            "surface-shadow panel relative flex w-full items-center overflow-hidden rounded-lg p-2 transition-all duration-200",
-            "before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/70 before:opacity-50 before:transition-opacity",
-            isFocused ? "border-primary/60 ring-4 ring-primary/10 before:opacity-100" : "hover:border-foreground/20",
-            validation?.isValid === false && "border-destructive/70 ring-4 ring-destructive/10 before:bg-destructive before:opacity-100"
+            "surface-shadow relative flex w-full items-center overflow-hidden rounded-lg border border-border/55 bg-card p-1.5 transition-all duration-300",
+            isFocused ? "border-primary/45 ring-4 ring-primary/10" : "hover:border-foreground/15",
+            validation?.isValid === false && "border-destructive/55 ring-4 ring-destructive/10"
           )}
         >
-          <div className="relative z-10 flex size-11 shrink-0 items-center justify-center rounded-lg border border-border/65 bg-background/65 sm:ml-1">
+          <div className="relative z-10 flex size-11 shrink-0 items-center justify-center text-muted-foreground sm:ml-1">
             {loading ? <Loader2 className="size-5 animate-spin text-primary" /> : getIcon()}
           </div>
           
@@ -126,7 +125,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
             type="text"
             aria-invalid={validation?.isValid === false}
             aria-describedby={validation?.isValid === false ? "query-error" : undefined}
-            className="relative z-10 h-14 min-w-0 flex-1 border-none bg-transparent px-4 text-base font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/65 sm:text-lg"
+            className="relative z-10 h-14 min-w-0 flex-1 border-none bg-transparent px-2 text-base font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/70 sm:px-3 sm:text-lg"
             placeholder="输入域名、IP 地址或 ASN"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
@@ -165,17 +164,14 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
         </div>
       </form>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
-        <span className="mr-1 inline-flex items-center gap-1.5 font-medium uppercase tracking-[0.18em]">
-          <Sparkles className="size-3.5" />
-          示例
-        </span>
+      <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-xs text-muted-foreground">
+        <span className="mr-1 font-medium">试试</span>
         {["baidu.com", "8.8.8.8", "AS15169"].map((example) => (
           <button
             key={example}
             type="button"
             onClick={() => handleInputChange(example)}
-            className="rounded-lg border border-border/70 bg-background/55 px-2.5 py-1.5 font-mono transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground"
+            className="rounded-lg px-2.5 py-1.5 font-mono transition-colors hover:bg-accent hover:text-foreground"
           >
             {example}
           </button>

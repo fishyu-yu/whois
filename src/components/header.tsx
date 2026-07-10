@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Github, ArrowLeft, History, Radar } from "lucide-react"
+import { Github, ArrowLeft, History, Search } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -22,8 +22,8 @@ export function Header({
   className
 }: HeaderProps) {
   return (
-    <header className={cn("sticky top-0 z-50 w-full px-3 pt-3 sm:px-5", className)}>
-      <div className="panel mx-auto flex h-14 w-full max-w-7xl items-center justify-between rounded-lg px-3 shadow-sm sm:px-4">
+    <header className={cn("glass sticky top-0 z-50 w-full", className)}>
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2">
           {showBack && (
             <Button variant="ghost" size="icon" asChild className="-ml-1 size-9 text-muted-foreground hover:text-foreground">
@@ -33,14 +33,11 @@ export function Header({
             </Button>
           )}
           
-          <Link href="/" className="group flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg border border-primary/25 bg-primary/12 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-              <Radar className="size-[18px]" />
+          <Link href="/" className="group flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-foreground text-background transition-transform duration-300 group-hover:scale-[1.03]">
+              <Search className="size-4" />
             </div>
-            <div className="leading-none">
-              <span className="block text-sm font-semibold tracking-tight">鲸探 Whois</span>
-              <span className="mt-1 hidden text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:block">Signal registry</span>
-            </div>
+            <span className="text-sm font-semibold">Whale Whois</span>
           </Link>
         </div>
 

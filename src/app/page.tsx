@@ -14,7 +14,7 @@ import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { History, X, Clock, Database, ShieldCheck, Network, ArrowUpRight } from "lucide-react"
+import { History, X, Clock, ArrowUpRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface WhoisData {
@@ -142,52 +142,40 @@ export default function Home() {
         <section className={cn(
           "view-shell w-full px-4 sm:px-6",
           isCompact
-            ? "mx-auto max-w-6xl pb-4 pt-8"
-            : "mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center py-20 sm:py-28"
+            ? "mx-auto max-w-5xl pb-3 pt-8"
+            : "mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center py-20 sm:py-28"
         )}>
           <div
             data-state={isCompact ? "compact" : "open"}
-            className="hero-transition mb-10 max-w-4xl text-center"
+            className="hero-transition mb-10 max-w-3xl text-center"
             aria-hidden={isCompact}
           >
-                <div className="mb-6 inline-flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                  <span className="size-1.5 rounded-full bg-primary" />
-                  RDAP / WHOIS
-                </div>
-                <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                  查清域名背后的
-                  <span className="block text-primary">注册与网络信号</span>
+                <p className="mb-5 text-sm font-medium text-primary">域名与网络信息</p>
+                <h1 className="text-balance text-5xl font-semibold text-foreground sm:text-6xl lg:text-7xl">
+                  Whois 查询
                 </h1>
-                <p className="text-balance mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                  聚合注册信息、关键日期、域名状态与 DNS 数据，快速查询域名、IP 地址和 ASN。
+                <p className="text-balance mx-auto mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+                  输入域名、IP 地址或 ASN，查看清晰可靠的注册与网络信息。
                 </p>
           </div>
 
           <div className={cn(
             "search-dock w-full",
-            isCompact ? "max-w-4xl" : "max-w-none"
+            isCompact ? "max-w-4xl" : "max-w-4xl"
           )}>
             <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={currentResult?.query} />
           </div>
 
           <div
             data-state={isCompact ? "compact" : "open"}
-            className="feature-transition mt-12 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3"
+            className="feature-transition mt-9 flex w-full max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground"
             aria-hidden={isCompact}
           >
-              {[
-                { icon: Database, title: "结构化数据", description: "清晰呈现注册与解析信息" },
-                { icon: Network, title: "多类型查询", description: "支持域名、IP 与 ASN" },
-                { icon: ShieldCheck, title: "本地历史", description: "查询记录仅保存在浏览器" },
-              ].map((item) => (
-                <div key={item.title} className="panel rounded-lg p-4 text-left">
-                  <div className="mb-3 flex size-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-                    <item.icon className="size-4 text-primary" />
-                  </div>
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
-                </div>
-              ))}
+              <span>RDAP 优先</span>
+              <span className="size-1 rounded-full bg-muted-foreground/40" />
+              <span>支持域名、IP 与 ASN</span>
+              <span className="size-1 rounded-full bg-muted-foreground/40" />
+              <span>历史记录仅保存在本机</span>
           </div>
 
           {history.length > 0 && (
@@ -217,12 +205,12 @@ export default function Home() {
           loading || currentResult ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         )}>
           {loading && (
-            <div className="mx-auto mb-6 w-full max-w-6xl">
-              <div className="panel loading-bridge overflow-hidden rounded-lg p-5 sm:p-6">
+            <div className="mx-auto mb-6 w-full max-w-5xl">
+              <div className="quiet-surface loading-bridge overflow-hidden rounded-lg p-5 sm:p-6">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">正在整理网络信号</p>
-                    <p className="mt-2 truncate font-mono text-lg font-semibold">{activeQuery || "查询中"}</p>
+                    <p className="text-sm text-muted-foreground">正在查询</p>
+                    <p className="mt-1 truncate text-lg font-semibold">{activeQuery || "查询中"}</p>
                   </div>
                   <div className="signal-loader" aria-hidden="true">
                     <span />
@@ -258,13 +246,13 @@ export default function Home() {
         />
         
         <div className={cn(
-          "panel absolute inset-y-0 right-0 w-full max-w-md transform rounded-none border-y-0 border-r-0 p-5 shadow-2xl transition-transform duration-300 sm:p-6",
+          "absolute inset-y-0 right-0 w-full max-w-md transform border-l border-border/60 bg-card p-5 shadow-2xl transition-transform duration-300 sm:p-6",
           showHistory ? "translate-x-0" : "translate-x-full"
         )}>
-          <div className="mb-6 flex items-start justify-between border-b border-border/70 pb-5">
+          <div className="mb-5 flex items-start justify-between border-b border-border/60 pb-5">
             <div>
-              <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-                <Clock className="size-4 text-primary" />
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <Clock className="size-4 text-muted-foreground" />
                 查询历史
               </h3>
               <p className="mt-1.5 text-xs text-muted-foreground">最近的 20 条查询保存在此设备</p>
@@ -282,9 +270,9 @@ export default function Home() {
                   handleQuery(item.query, item.type)
                   setShowHistory(false)
                 }}
-                className="group w-full rounded-lg border border-transparent p-3.5 text-left transition-colors hover:border-border hover:bg-card/70"
+                className="group w-full rounded-lg p-3.5 text-left transition-colors hover:bg-accent"
               >
-                <div className="truncate font-mono text-sm font-semibold transition-colors group-hover:text-primary">{item.query}</div>
+                <div className="truncate text-sm font-semibold transition-colors group-hover:text-primary">{item.query}</div>
                 <div className="mt-2 flex justify-between text-[11px] font-medium text-muted-foreground">
                   <span className="uppercase tracking-wider opacity-70">{item.type}</span>
                   <span>{new Date(item.timestamp).toLocaleDateString()}</span>
