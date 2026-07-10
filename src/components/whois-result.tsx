@@ -95,8 +95,10 @@ const calculateDaysRemaining = (dateStr?: string) => {
   }
 }
 
-const maskEmail = (email: string) => {
-  return email
+const formatDisplayValue = (value: any): string => {
+  if (Array.isArray(value)) return value.map(formatDisplayValue).filter(Boolean).join("\n")
+  if (value && typeof value === "object") return JSON.stringify(value, null, 2)
+  return value === undefined || value === null ? "" : String(value)
 }
 
 export function WhoisResult({ data }: WhoisResultProps) {
@@ -139,7 +141,12 @@ export function WhoisResult({ data }: WhoisResultProps) {
         : null
  
   const parsed = effective?.parsed || null
-  const raw = effective?.raw || ""
+  const rdapRawPayload: Record<string, any> = {}
+  if (effective?.rdapRegistryRaw) rdapRawPayload.registry = effective.rdapRegistryRaw
+  if (effective?.rdapRegistrarRaw) rdapRawPayload.registrar = effective.rdapRegistrarRaw
+  const raw = Object.keys(rdapRawPayload).length > 0
+    ? JSON.stringify(rdapRawPayload, null, 2)
+    : effective?.raw || ""
 
   const pickValue = (...keys: string[]) => {
     if (!parsed) return undefined
@@ -194,6 +201,14 @@ export function WhoisResult({ data }: WhoisResultProps) {
       organization: pickValue("registrant_organization", "registrant_org", "registrant_organization_name"),
       email: pickValue("registrant_email", "registrant_contact_email", "registrant_email_address"),
       phone: pickValue("registrant_phone", "registrant_contact_phone", "registrant_phone_number", "registrant_tel"),
+      fax: pickValue("registrant_fax", "registrant_contact_fax"),
+      title: pickValue("registrant_title", "registrant_contact_title"),
+      role: pickValue("registrant_role", "registrant_contact_role"),
+      address: pickValue("registrant_address", "registrant_contact_address"),
+      street: pickValue("registrant_street", "registrant_street_address", "registrant_contact_street"),
+      city: pickValue("registrant_city", "registrant_contact_city"),
+      state: pickValue("registrant_state", "registrant_province", "registrant_contact_state"),
+      postalCode: pickValue("registrant_postal_code", "registrant_zip", "registrant_contact_postal_code"),
       country: pickValue("registrant_country", "registrant_country_code"),
       ...getContact("registrant")
     },
@@ -202,6 +217,14 @@ export function WhoisResult({ data }: WhoisResultProps) {
       organization: pickValue("admin_organization", "admin_org", "administrative_contact_organization"),
       email: pickValue("admin_email", "admin_contact_email", "administrative_contact_email"),
       phone: pickValue("admin_phone", "admin_contact_phone", "administrative_contact_phone"),
+      fax: pickValue("admin_fax", "admin_contact_fax", "administrative_contact_fax"),
+      title: pickValue("admin_title", "administrative_contact_title"),
+      role: pickValue("admin_role", "administrative_contact_role"),
+      address: pickValue("admin_address", "administrative_contact_address"),
+      street: pickValue("admin_street", "admin_street_address", "administrative_contact_street"),
+      city: pickValue("admin_city", "administrative_contact_city"),
+      state: pickValue("admin_state", "admin_province", "administrative_contact_state"),
+      postalCode: pickValue("admin_postal_code", "admin_zip", "administrative_contact_postal_code"),
       country: pickValue("admin_country", "administrative_contact_country"),
       ...getContact("admin")
     },
@@ -210,6 +233,14 @@ export function WhoisResult({ data }: WhoisResultProps) {
       organization: pickValue("tech_organization", "tech_org", "technical_contact_organization"),
       email: pickValue("tech_email", "tech_contact_email", "technical_contact_email"),
       phone: pickValue("tech_phone", "tech_contact_phone", "technical_contact_phone"),
+      fax: pickValue("tech_fax", "tech_contact_fax", "technical_contact_fax"),
+      title: pickValue("tech_title", "technical_contact_title"),
+      role: pickValue("tech_role", "technical_contact_role"),
+      address: pickValue("tech_address", "technical_contact_address"),
+      street: pickValue("tech_street", "tech_street_address", "technical_contact_street"),
+      city: pickValue("tech_city", "technical_contact_city"),
+      state: pickValue("tech_state", "tech_province", "technical_contact_state"),
+      postalCode: pickValue("tech_postal_code", "tech_zip", "technical_contact_postal_code"),
       country: pickValue("tech_country", "technical_contact_country"),
       ...getContact("tech")
     },
@@ -218,12 +249,37 @@ export function WhoisResult({ data }: WhoisResultProps) {
       organization: pickValue("billing_organization", "billing_org", "billing_contact_organization"),
       email: pickValue("billing_email", "billing_contact_email"),
       phone: pickValue("billing_phone", "billing_contact_phone"),
+      fax: pickValue("billing_fax", "billing_contact_fax"),
+      title: pickValue("billing_title", "billing_contact_title"),
+      role: pickValue("billing_role", "billing_contact_role"),
+      address: pickValue("billing_address", "billing_contact_address"),
+      street: pickValue("billing_street", "billing_street_address", "billing_contact_street"),
+      city: pickValue("billing_city", "billing_contact_city"),
+      state: pickValue("billing_state", "billing_province", "billing_contact_state"),
+      postalCode: pickValue("billing_postal_code", "billing_zip", "billing_contact_postal_code"),
       country: pickValue("billing_country", "billing_contact_country"),
       ...getContact("billing")
     }
   }
 
   const daysRemaining = calculateDaysRemaining(normalized.expirationDate)
+  const allFields = Object.entries(parsed || {}).filter(([, value]) => {
+    if (value === undefined || value === null) return false
+    if (typeof value === "string") return value.trim().length > 0
+    if (Array.isArray(value)) return value.length > 0
+    return true
+  })
+
+  const sourceLabel = (() => {
+    switch (effective?.dataSource) {
+      case "rdap-registrar": return "RDAP · 注册商"
+      case "rdap-registry": return "RDAP · 注册局"
+      case "registrar": return "WHOIS · 注册商"
+      case "registry": return "WHOIS · 注册局"
+      case "standard": return "WHOIS"
+      default: return null
+    }
+  })()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(raw)
@@ -279,12 +335,16 @@ export function WhoisResult({ data }: WhoisResultProps) {
     const org = contact?.organization || contact?.org || contact?.Organization
     const email = contact?.email || contact?.Email || contact?.["e-mail"]
     const phone = contact?.phone || contact?.Phone || contact?.["phone-number"]
+    const fax = contact?.fax || contact?.Fax
+    const titleText = contact?.title || contact?.Title
+    const role = contact?.role || contact?.Role
     const street = contact?.street || contact?.address || contact?.Street
     const city = contact?.city || contact?.City
     const state = contact?.state || contact?.State || contact?.province
+    const postalCode = contact?.postalCode || contact?.postal_code || contact?.zip
     const country = contact?.country || contact?.Country || contact?.["country-code"]
 
-    const hasData = name || org || email || phone || street || city || country
+    const hasData = name || org || email || phone || fax || titleText || role || street || city || state || postalCode || country
 
     if (!hasData && !alwaysShow) return null
 
@@ -300,36 +360,38 @@ export function WhoisResult({ data }: WhoisResultProps) {
         <CardContent className="space-y-3 px-5 py-5 sm:px-5">
           {hasData ? (
             <>
-              {(name || org) && (
+              {(name || org || titleText || role) && (
                 <div>
-                   {name && <div className="font-medium text-foreground">{name}</div>}
-                   {org && <div className="text-sm text-muted-foreground">{org}</div>}
+                   {name && <div className="whitespace-pre-wrap break-words font-medium text-foreground">{formatDisplayValue(name)}</div>}
+                   {org && <div className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{formatDisplayValue(org)}</div>}
+                   {(titleText || role) && <div className="mt-1 text-xs text-muted-foreground">{[titleText, role].map(formatDisplayValue).filter(Boolean).join(" · ")}</div>}
                 </div>
               )}
               
-              {(email || phone) && (
+              {(email || phone || fax) && (
                  <div className="pt-2 space-y-2">
                     {email && (
-                      <div className="flex min-w-0 items-center gap-2 text-sm">
-                        <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="truncate font-mono text-xs">{maskEmail(email)}</span>
+                      <div className="flex min-w-0 items-start gap-2 text-sm">
+                        <Mail className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-5" title={formatDisplayValue(email)}>{formatDisplayValue(email)}</span>
                       </div>
                     )}
                     {phone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="font-mono text-xs">{phone}</span>
+                      <div className="flex min-w-0 items-start gap-2 text-sm">
+                        <Phone className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-5">{formatDisplayValue(phone)}</span>
                       </div>
                     )}
+                    {fax && <p className="break-all pl-5.5 font-mono text-xs text-muted-foreground">传真：{formatDisplayValue(fax)}</p>}
                  </div>
               )}
 
-              {(street || city || country) && (
+              {(street || city || state || postalCode || country) && (
                 <div className="pt-2 flex items-start gap-2 text-sm text-muted-foreground">
                   <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                  <div>
-                    {street && <p>{street}</p>}
-                    <p>{[city, state, country].filter(Boolean).join(", ")}</p>
+                  <div className="min-w-0 break-words">
+                    {street && <p className="whitespace-pre-wrap">{formatDisplayValue(street)}</p>}
+                    <p>{[city, state, postalCode, country].map(formatDisplayValue).filter(Boolean).join(", ")}</p>
                   </div>
                 </div>
               )}
@@ -364,6 +426,11 @@ export function WhoisResult({ data }: WhoisResultProps) {
             {normalized.registrar && (
               <Badge variant="secondary" className="max-w-full truncate rounded-lg px-2.5 py-1 font-normal">
                 {normalized.registrar}
+              </Badge>
+            )}
+            {sourceLabel && (
+              <Badge variant="outline" className="rounded-lg px-2.5 py-1 font-normal">
+                {sourceLabel}
               </Badge>
             )}
             {daysRemaining !== null && (
@@ -495,7 +562,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
                 {(normalized.registrarAbuseEmail || normalized.registrarAbusePhone) && (
                     <div className="mt-4 pt-4 border-t border-border/50">
                 <p className="text-xs font-medium text-muted-foreground mb-1">滥用投诉</p>
-                        {normalized.registrarAbuseEmail && <p className="text-xs font-mono">{maskEmail(normalized.registrarAbuseEmail)}</p>}
+                        {normalized.registrarAbuseEmail && <p className="whitespace-pre-wrap break-all font-mono text-xs">{formatDisplayValue(normalized.registrarAbuseEmail)}</p>}
                         {normalized.registrarAbusePhone && <p className="text-xs font-mono">{normalized.registrarAbusePhone}</p>}
                     </div>
                 )}
@@ -524,6 +591,27 @@ export function WhoisResult({ data }: WhoisResultProps) {
          <ContactCard title="技术联系" contact={normalized.tech} alwaysShow />
          <ContactCard title="账单联系" contact={normalized.billing} />
       </div>
+
+      {/* Every parsed field is retained here, including registry-specific WHOIS fields. */}
+      {allFields.length > 0 && (
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Server className="size-4 text-primary" />
+              全部查询字段
+            </CardTitle>
+            <CardDescription>数据源返回并成功解析的全部字段</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-x-8 px-5 sm:grid-cols-2 sm:px-5">
+            {allFields.map(([key, value]) => (
+              <div key={key} className="min-w-0 border-b border-border/45 py-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0">
+                <p className="break-all font-mono text-[11px] text-muted-foreground">{key}</p>
+                <p className="mt-1 whitespace-pre-wrap break-all text-sm leading-6 text-foreground">{formatDisplayValue(value)}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Raw Data Toggle */}
       <div className="quiet-surface overflow-hidden rounded-lg">

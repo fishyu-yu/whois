@@ -33,13 +33,13 @@ export default function DomainPage() {
   const domainSlug = Array.isArray(domainParam) ? domainParam.join("/") : domainParam
   const domain = domainSlug ? decodeURIComponent(domainSlug) : ""
 
-  const handleQuery = async (query: string, type: string) => {
+  const handleQuery = async (query: string, type: string, dataSource = "auto") => {
     setLoading(true)
     try {
       const response = await fetch("/api/whois", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, type, dataSource: "rdap" }),
+        body: JSON.stringify({ query, type, dataSource }),
       });
 
       if (!response.ok) {
@@ -122,7 +122,7 @@ export default function DomainPage() {
                   </div>
                   <div className="text-center">
                     <p className="font-medium text-foreground">正在查询 {domain}</p>
-                    <p className="mt-1 text-sm">正在连接 RDAP 数据源并整理结果</p>
+                    <p className="mt-1 text-sm">正在连接 RDAP / WHOIS 数据源并整理结果</p>
                   </div>
               </div>
           ) : currentResult ? (

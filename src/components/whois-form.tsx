@@ -91,7 +91,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
       return
     }
 
-    onSubmit(query.trim(), detectedType, "rdap")
+    onSubmit(query.trim(), detectedType, "auto")
   }
 
   const getIcon = () => {

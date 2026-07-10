@@ -18,6 +18,8 @@ export interface ParsedRDAPData {
   registrar_iana_id?: string;
   registrar_abuse_contact_email?: string;
   registrar_abuse_contact_phone?: string;
+  registrar_email?: string;
+  registrar_phone?: string;
   domain_status?: string[];
   name_server?: string[];
   dnssec?: string;
@@ -25,22 +27,54 @@ export interface ParsedRDAPData {
   registrant_organization?: string;
   registrant_email?: string;
   registrant_phone?: string;
+  registrant_fax?: string;
+  registrant_title?: string;
+  registrant_role?: string;
+  registrant_address?: string;
+  registrant_street?: string;
+  registrant_city?: string;
+  registrant_state?: string;
+  registrant_postal_code?: string;
   registrant_country?: string;
   admin_name?: string;
   admin_organization?: string;
   admin_email?: string;
   admin_phone?: string;
+  admin_fax?: string;
+  admin_title?: string;
+  admin_role?: string;
+  admin_address?: string;
+  admin_street?: string;
+  admin_city?: string;
+  admin_state?: string;
+  admin_postal_code?: string;
   admin_country?: string;
   tech_name?: string;
   tech_organization?: string;
   tech_email?: string;
   tech_phone?: string;
+  tech_fax?: string;
+  tech_title?: string;
+  tech_role?: string;
+  tech_address?: string;
+  tech_street?: string;
+  tech_city?: string;
+  tech_state?: string;
+  tech_postal_code?: string;
   tech_country?: string;
   // 新增：账单联系人
   billing_name?: string;
   billing_organization?: string;
   billing_email?: string;
   billing_phone?: string;
+  billing_fax?: string;
+  billing_title?: string;
+  billing_role?: string;
+  billing_address?: string;
+  billing_street?: string;
+  billing_city?: string;
+  billing_state?: string;
+  billing_postal_code?: string;
   billing_country?: string;
 }
 
@@ -60,28 +94,71 @@ function parseVCard(vcardArray: any[]): any {
   const properties = vcardArray[1];
   const result: any = {};
 
+  const toText = (value: any): string => {
+    if (Array.isArray(value)) {
+      return value.map(toText).filter(Boolean).join(', ');
+    }
+    if (value && typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return value === undefined || value === null ? '' : String(value).trim();
+  };
+
+  const appendValue = (key: string, value: any) => {
+    const text = toText(value);
+    if (!text) return;
+    result[key] = result[key] ? `${result[key]}\n${text}` : text;
+  };
+
   for (const prop of properties) {
     if (!Array.isArray(prop) || prop.length < 4) continue;
 
-    const [name, params, type, value] = prop;
+    const [name, params, , value] = prop;
     
     switch (name.toLowerCase()) {
       case 'fn':
-        result.name = value;
+        appendValue('name', value);
         break;
       case 'org':
-        result.organization = value;
+        appendValue('organization', value);
         break;
       case 'email':
-        result.email = value;
+        appendValue('email', value);
         break;
       case 'tel':
-        result.phone = value;
+        if (toText(params?.type).toLowerCase().includes('fax')) {
+          appendValue('fax', value);
+        } else {
+          appendValue('phone', value);
+        }
         break;
       case 'adr':
-        if (Array.isArray(value) && value.length > 6) {
-          result.country = value[6]; // 国家通常在第7个位置
+        if (Array.isArray(value)) {
+          const [poBox, extended, street, city, state, postalCode, country] = value;
+          const streetText = [poBox, extended, street].map(toText).filter(Boolean).join(', ');
+          appendValue('street', streetText);
+          appendValue('city', city);
+          appendValue('state', state);
+          appendValue('postalCode', postalCode);
+          appendValue('country', country);
+          appendValue(
+            'address',
+            [streetText, toText(city), toText(state), toText(postalCode), toText(country)]
+              .filter(Boolean)
+              .join(', '),
+          );
+        } else {
+          appendValue('address', value);
         }
+        break;
+      case 'label':
+        appendValue('address', value);
+        break;
+      case 'title':
+        appendValue('title', value);
+        break;
+      case 'role':
+        appendValue('role', value);
         break;
     }
   }
@@ -94,10 +171,39 @@ function parseVCard(vcardArray: any[]): any {
  */
 function findEntityByRole(entities: RDAPEntity[] | undefined, role: string): RDAPEntity | undefined {
   if (!entities) return undefined;
-  
-  return entities.find(entity => 
-    entity.roles && entity.roles.includes(role)
-  );
+
+  const pending = [...entities];
+  while (pending.length > 0) {
+    const entity = pending.shift();
+    if (!entity) continue;
+    if (entity.roles?.includes(role)) return entity;
+    if (entity.entities?.length) pending.push(...entity.entities);
+  }
+
+  return undefined;
+}
+
+function assignContact(result: ParsedRDAPData, prefix: 'registrant' | 'admin' | 'tech' | 'billing', contact: any) {
+  const target = result as Record<string, string | string[] | undefined>;
+  const fields: Record<string, string> = {
+    name: 'name',
+    organization: 'organization',
+    email: 'email',
+    phone: 'phone',
+    fax: 'fax',
+    title: 'title',
+    role: 'role',
+    address: 'address',
+    street: 'street',
+    city: 'city',
+    state: 'state',
+    postalCode: 'postal_code',
+    country: 'country',
+  };
+
+  for (const [sourceKey, targetKey] of Object.entries(fields)) {
+    if (contact[sourceKey]) target[`${prefix}_${targetKey}`] = contact[sourceKey];
+  }
 }
 
 /**
@@ -189,6 +295,8 @@ export function parseRDAPResponse(rdapData: RDAPResponse): ParsedRDAPData {
       if (registrarEntity.vcardArray) {
         const registrarInfo = parseVCard(registrarEntity.vcardArray);
         result.registrar = registrarInfo.name || registrarInfo.organization;
+        result.registrar_email = registrarInfo.email;
+        result.registrar_phone = registrarInfo.phone;
       }
       if (registrarEntity.port43) {
         result.registrar_whois_server = registrarEntity.port43;
@@ -220,46 +328,28 @@ export function parseRDAPResponse(rdapData: RDAPResponse): ParsedRDAPData {
     const registrantEntity = findEntityByRole(rdapData.entities, 'registrant');
     if (registrantEntity && registrantEntity.vcardArray) {
       const registrantInfo = parseVCard(registrantEntity.vcardArray);
-      result.registrant_name = registrantInfo.name;
-      result.registrant_organization = registrantInfo.organization;
-      result.registrant_email = registrantInfo.email;
-      result.registrant_phone = registrantInfo.phone;
-      result.registrant_country = registrantInfo.country;
+      assignContact(result, 'registrant', registrantInfo);
     }
 
     // 查找管理联系人
     const adminEntity = findEntityByRole(rdapData.entities, 'administrative');
     if (adminEntity && adminEntity.vcardArray) {
       const adminInfo = parseVCard(adminEntity.vcardArray);
-      result.admin_name = adminInfo.name;
-      result.admin_organization = adminInfo.organization;
-      result.admin_email = adminInfo.email;
-      result.admin_phone = adminInfo.phone;
-      // 可选：国家
-      if (adminInfo.country) result.admin_country = adminInfo.country;
+      assignContact(result, 'admin', adminInfo);
     }
 
     // 查找技术联系人
     const techEntity = findEntityByRole(rdapData.entities, 'technical');
     if (techEntity && techEntity.vcardArray) {
       const techInfo = parseVCard(techEntity.vcardArray);
-      result.tech_name = techInfo.name;
-      result.tech_organization = techInfo.organization;
-      result.tech_email = techInfo.email;
-      result.tech_phone = techInfo.phone;
-      // 可选：国家
-      if (techInfo.country) result.tech_country = techInfo.country;
+      assignContact(result, 'tech', techInfo);
     }
 
     // 新增：查找账单联系人
     const billingEntity = findEntityByRole(rdapData.entities, 'billing');
     if (billingEntity && billingEntity.vcardArray) {
       const billingInfo = parseVCard(billingEntity.vcardArray);
-      result.billing_name = billingInfo.name;
-      result.billing_organization = billingInfo.organization;
-      result.billing_email = billingInfo.email;
-      result.billing_phone = billingInfo.phone;
-      result.billing_country = billingInfo.country;
+      assignContact(result, 'billing', billingInfo);
     }
 
     // 查找滥用联系人（通常用于 registrar_abuse_contact_*）

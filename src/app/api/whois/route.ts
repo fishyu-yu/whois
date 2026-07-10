@@ -3,7 +3,7 @@ import { exec } from "child_process"
 import { promisify } from "util"
 import net from "net"
 import { validateDomain, formatDomainDisplay, DomainValidationResult, getDomainWhoisServer } from "@/lib/domain-utils"
-import { getCCTLDInfo, isCCTLD } from "@/lib/cctld-database"
+import { getCCTLDInfo } from "@/lib/cctld-database"
 import { queryDomainRDAP, isRDAPSupported } from "@/lib/rdap-client"
 import { parseRDAPResponse, rdapToWhoisText } from "@/lib/rdap-parser"
 
@@ -224,8 +224,8 @@ async function performDomainWhoisWithPriority(query: string): Promise<any> {
   let finalResult: any = null
 
   const domainValidation = validateDomain(query)
-  const isCountryTLD = isCCTLD(query)
-  const cctldInfo = isCountryTLD ? getCCTLDInfo(query) : null
+  const isCountryTLD = domainValidation.isCCTLD
+  const cctldInfo = isCountryTLD ? getCCTLDInfo(domainValidation.tld) : null
 
   try {
     // 第一步：尝试获取注册局基本信息（优先选择专用WHOIS服务器；ccTLD 走 TCP 43）

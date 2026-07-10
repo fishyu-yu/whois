@@ -72,7 +72,7 @@ export default function Home() {
     saveHistory(deduped.slice(0, 20))
   }
 
-  const handleQuery = async (query: string, type: string) => {
+  const handleQuery = async (query: string, type: string, dataSource = "auto") => {
     updateURLPath(query)
     setActiveQuery(query)
     setLoading(true)
@@ -81,7 +81,7 @@ export default function Home() {
       const response = await fetch("/api/whois", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, type, dataSource: "rdap" }),
+        body: JSON.stringify({ query, type, dataSource }),
       });
 
       if (!response.ok) {
