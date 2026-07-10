@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { WhoisForm } from "@/components/whois-form"
+import { detectQueryType, WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Header } from "@/components/header"
@@ -85,7 +85,19 @@ export default function DomainPage() {
 
   useEffect(() => {
     if (domain && !hasSearched) {
-      handleQuery(domain, "auto")
+      const queryType = detectQueryType(domain)
+      if (queryType === "unknown") {
+        setCurrentResult({
+          query: domain,
+          type: queryType,
+          result: { error: "无效的查询格式" },
+          timestamp: new Date().toISOString(),
+        })
+        setHasSearched(true)
+        return
+      }
+
+      handleQuery(domain, queryType)
     }
   }, [domain, hasSearched])
 
@@ -94,7 +106,7 @@ export default function DomainPage() {
       <Header showBack={true} />
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-4 pb-12 pt-8 sm:px-6">
-        <div className="mb-10 w-full rounded-2xl border border-border/70 bg-card/65 p-4 backdrop-blur-sm sm:p-6">
+        <div className="panel loading-bridge mb-10 w-full rounded-lg p-4 sm:p-6">
             <div className="mb-5 flex items-center gap-2 text-sm font-semibold">
               <Radar className="size-4 text-primary" />
               继续查询
@@ -104,8 +116,8 @@ export default function DomainPage() {
 
         <div className="min-h-[400px] w-full transition-all duration-500">
           {loading ? (
-              <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border border-dashed py-28 text-muted-foreground">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
+              <div className="panel loading-bridge flex flex-col items-center justify-center gap-5 rounded-lg border-dashed py-28 text-muted-foreground">
+                  <div className="flex size-12 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
                     <Loader2 className="size-5 animate-spin text-primary" />
                   </div>
                   <div className="text-center">
@@ -115,6 +127,7 @@ export default function DomainPage() {
               </div>
           ) : currentResult ? (
               <WhoisResult 
+                key={`${currentResult.query}-${currentResult.timestamp}`}
                 data={currentResult} 
                 onExport={() => {}} 
                 onShare={() => {}} 

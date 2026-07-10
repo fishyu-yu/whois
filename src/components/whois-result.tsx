@@ -106,6 +106,30 @@ export function WhoisResult({ data }: WhoisResultProps) {
   if (!data || !data.result) return null
 
   const result = data.result
+
+  if (result?.error) {
+    return (
+      <div className="result-flow mx-auto w-full max-w-6xl space-y-6 pb-12">
+        <div className="panel rounded-lg p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-destructive/25 bg-destructive/10 text-destructive">
+              <AlertTriangle className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-destructive">查询失败</p>
+              <h1 className="mt-2 truncate font-mono text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                {data.query || "查询结果"}
+              </h1>
+              <p className="mt-4 whitespace-pre-wrap break-words rounded-lg border border-border/65 bg-muted/45 p-4 text-sm leading-6 text-muted-foreground">
+                {result.error}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const effective = (result && (result.raw || result.parsed))
     ? result
     : (result?.result && (result.result.raw || result.result.parsed))
@@ -265,9 +289,9 @@ export function WhoisResult({ data }: WhoisResultProps) {
     if (!hasData && !alwaysShow) return null
 
     return (
-      <Card className="h-full gap-0 py-0 shadow-none">
+      <Card className="h-full gap-0 py-0">
         <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
-        <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           <User className="size-3.5" />
           {title}
         </CardTitle>
@@ -312,7 +336,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
             </>
           ) : (
              <div className="flex flex-col items-center justify-center py-7 text-muted-foreground">
-               <div className="mb-3 flex size-9 items-center justify-center rounded-full bg-muted">
+               <div className="mb-3 flex size-9 items-center justify-center rounded-lg border border-border/70 bg-muted">
                  <ShieldCheck className="size-4" />
                </div>
                <p className="text-xs font-medium">隐私保护已开启</p>
@@ -324,27 +348,27 @@ export function WhoisResult({ data }: WhoisResultProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="result-flow mx-auto w-full max-w-6xl space-y-6 pb-12">
       
       {/* Header Section */}
-      <div className="flex flex-col justify-between gap-5 border-b border-border/70 pb-6 md:flex-row md:items-end">
+      <div className="panel flex flex-col justify-between gap-5 rounded-lg p-5 md:flex-row md:items-end sm:p-6">
         <div className="min-w-0">
-          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <CircleCheck className="size-3.5" />
             查询完成
           </p>
-          <h1 className="truncate font-mono text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
+          <h1 className="truncate font-mono text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {normalized.domain || "查询结果"}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {normalized.registrar && (
-              <Badge variant="secondary" className="max-w-full truncate px-2.5 py-1 font-normal">
+              <Badge variant="secondary" className="max-w-full truncate rounded-lg px-2.5 py-1 font-normal">
                 {normalized.registrar}
               </Badge>
             )}
             {daysRemaining !== null && (
               <Badge variant="outline" className={cn(
-                "border-0 px-2.5 py-1 font-normal",
+                "rounded-lg border-0 px-2.5 py-1 font-normal",
                 daysRemaining < 30 ? "bg-red-500/10 text-red-700 dark:text-red-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
               )}>
                 {daysRemaining > 0 ? `剩余 ${daysRemaining} 天` : "已过期"}
@@ -354,15 +378,15 @@ export function WhoisResult({ data }: WhoisResultProps) {
         </div>
         
         <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
-           <Button variant="outline" size="sm" onClick={() => handleExport('json')} className="rounded-lg">
+           <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
              <Download className="w-4 h-4" />
              JSON
            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('csv')} className="rounded-lg">
+            <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
              <Download className="w-4 h-4" />
              CSV
            </Button>
-           <Button variant="secondary" size="sm" onClick={handleCopy} className="rounded-lg">
+           <Button variant="secondary" size="sm" onClick={handleCopy}>
              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
              复制
            </Button>
@@ -373,7 +397,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         
         {/* Dates Card */}
-        <Card className="gap-0 py-0 shadow-none lg:col-span-1">
+        <Card className="gap-0 py-0 lg:col-span-1">
           <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Calendar className="size-4 text-primary" />
@@ -411,7 +435,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
         </Card>
 
         {/* Status & Registrar Info Card */}
-        <Card className="gap-0 py-0 shadow-none lg:col-span-2">
+        <Card className="gap-0 py-0 lg:col-span-2">
           <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Globe className="size-4 text-primary" />
@@ -436,7 +460,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
                         <Tooltip>
                             <TooltipTrigger>
                             <span className={cn(
-                                "px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-help",
+                                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-help",
                                 isNormal && "bg-green-500/10 text-green-700 dark:text-green-400",
                                 isWarning && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
                                 isDanger && "bg-red-500/10 text-red-700 dark:text-red-400",
@@ -481,9 +505,9 @@ export function WhoisResult({ data }: WhoisResultProps) {
                <p className="mb-3 text-xs font-medium text-muted-foreground">DNS 服务器</p>
                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                    {normalized.nameServers.map((ns: string, i: number) => (
-                     <div key={i} className="flex items-center gap-2 rounded-lg bg-muted/70 px-3 py-2 font-mono text-xs text-foreground/80">
+                     <div key={i} className="flex min-w-0 items-center gap-2 rounded-lg border border-border/55 bg-muted/55 px-3 py-2 font-mono text-xs text-foreground/80">
                        <Server className="size-3.5 text-muted-foreground" />
-                       {ns}
+                       <span className="truncate">{ns}</span>
                      </div>
                    ))}
                    {normalized.nameServers.length === 0 && <span className="text-sm text-muted-foreground">无名称服务器信息</span>}
@@ -502,7 +526,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
       </div>
 
       {/* Raw Data Toggle */}
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="panel overflow-hidden rounded-lg">
         <button 
           onClick={() => setShowRaw(!showRaw)}
           className="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted/60"

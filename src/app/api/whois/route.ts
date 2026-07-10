@@ -79,6 +79,7 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
       // 根据数据源选择查询方式
       if (!dataSource || dataSource === "rdap") {
         // 默认使用 RDAP，失败或无结果则回退到 WHOIS
+        let rdapError: any = null
         try {
           const rdapData = await queryDomainRDAP(query)
           if (rdapData) {
@@ -101,11 +102,16 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
           if (e?.message === 'RDAP_NOT_FOUND') {
             throw new Error('域名未注册')
           }
+          rdapError = e
           console.warn(`RDAP 查询失败，回退到 WHOIS: ${e?.message || e}`)
         }
 
         // 如果 RDAP 未得到结果，则回退到 WHOIS
         if (!result) {
+          if (dataSource === "rdap") {
+            throw createRdapUnavailableError(query, rdapError)
+          }
+
           try {
             result = await performDomainWhoisWithPriority(query)
           } catch (fallbackErr) {
@@ -175,7 +181,7 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
     return result
   } catch (error: any) {
     // 如果系统没有 whois 命令，不再返回模拟数据，改为结构化错误
-    if (error?.message?.includes("whois") && error?.message?.includes("not found")) {
+    if (isSystemWhoisUnavailableError(error)) {
       if (type === "domain") {
         const validation = validateDomain(query)
         const tld = (validation as DomainValidationResult)?.tld || null
@@ -189,6 +195,26 @@ async function performWhoisQuery(query: string, type: string, dataSource?: strin
     }
     throw error
   }
+}
+
+function createRdapUnavailableError(query: string, error: any) {
+  const reason = String(error?.message || error || "未知错误")
+  return new Error(`RDAP 查询失败，当前环境无法连接 ${query} 的 RDAP 服务。请检查网络连接，或切换到可访问外网的运行环境后重试。${reason ? ` 原因：${reason}` : ""}`)
+}
+
+function isSystemWhoisUnavailableError(error: any): boolean {
+  const message = String(error?.message || error || "").toLowerCase()
+  return (
+    message.includes("command failed: whois") ||
+    message.includes("'whois'") ||
+    message.includes('"whois"') ||
+    message.includes("whois: command not found") ||
+    message.includes("whois: not found") ||
+    message.includes("not recognized as an internal or external command") ||
+    message.includes("不是内部或外部命令") ||
+    message.includes("無法辨識") ||
+    message.includes("无法将")
+  )
 }
 
 // 域名查询优先级逻辑：优先注册商，回退到注册局

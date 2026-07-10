@@ -1,4 +1,4 @@
-const CACHE_NAME = 'whois-tool-v1';
+const CACHE_NAME = 'whois-tool-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -15,6 +15,7 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting();
 });
 
 // 激活事件
@@ -31,10 +32,36 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
 // 拦截网络请求
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  const isAppShell = event.request.mode === 'navigate' || event.request.destination === 'document';
+  const isNextAsset = requestUrl.pathname.startsWith('/_next/');
+
+  if (isAppShell || isNextAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/')))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

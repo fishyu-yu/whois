@@ -21,6 +21,18 @@ interface WhoisFormProps {
   defaultValue?: string
 }
 
+export function detectQueryType(input: string): string {
+  const domainRegex = /^[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$|^xn--[a-zA-Z0-9-]+(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$/
+  const ipv4Regex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.)){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
+  const ipv6Regex = /^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$/
+  const asnRegex = /^(AS)?\d{1,10}$/i
+
+  if (ipv4Regex.test(input) || ipv6Regex.test(input)) return "ip"
+  if (!input.includes('.') && !input.includes(':') && asnRegex.test(input)) return "asn"
+  if (domainRegex.test(input)) return "domain"
+  return "unknown"
+}
+
 export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
   const [query, setQuery] = useState(defaultValue || "")
   const [validation, setValidation] = useState<{ isValid: boolean; message?: string; type?: string } | null>(null)
@@ -40,18 +52,6 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
         handleInputChange(defaultValue)
     }
   }, [defaultValue])
-
-  const detectQueryType = (input: string): string => {
-    const domainRegex = /^[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$|^xn--[a-zA-Z0-9-]+(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$/
-    const ipv4Regex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.)){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
-    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$/
-    const asnRegex = /^(AS)?\d{1,10}$/i
-
-    if (ipv4Regex.test(input) || ipv6Regex.test(input)) return "ip"
-    if (!input.includes('.') && !input.includes(':') && asnRegex.test(input)) return "asn"
-    if (domainRegex.test(input)) return "domain"
-    return "unknown"
-  }
 
   const handleInputChange = (value: string) => {
     setQuery(value)
@@ -110,12 +110,13 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
         <label htmlFor="whois-query" className="sr-only">域名、IP 或 ASN</label>
         <div 
           className={cn(
-            "surface-shadow relative flex w-full items-center overflow-hidden rounded-2xl border bg-card p-2 transition-all duration-200",
-            isFocused ? "border-primary/60 ring-4 ring-primary/10" : "border-border hover:border-foreground/20",
-            validation?.isValid === false && "border-destructive/70 ring-4 ring-destructive/10"
+            "surface-shadow panel relative flex w-full items-center overflow-hidden rounded-lg p-2 transition-all duration-200",
+            "before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/70 before:opacity-50 before:transition-opacity",
+            isFocused ? "border-primary/60 ring-4 ring-primary/10 before:opacity-100" : "hover:border-foreground/20",
+            validation?.isValid === false && "border-destructive/70 ring-4 ring-destructive/10 before:bg-destructive before:opacity-100"
           )}
         >
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted sm:ml-1">
+          <div className="relative z-10 flex size-11 shrink-0 items-center justify-center rounded-lg border border-border/65 bg-background/65 sm:ml-1">
             {loading ? <Loader2 className="size-5 animate-spin text-primary" /> : getIcon()}
           </div>
           
@@ -125,7 +126,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
             type="text"
             aria-invalid={validation?.isValid === false}
             aria-describedby={validation?.isValid === false ? "query-error" : undefined}
-            className="h-14 min-w-0 flex-1 border-none bg-transparent px-4 text-base font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/70 sm:text-lg"
+            className="relative z-10 h-14 min-w-0 flex-1 border-none bg-transparent px-4 text-base font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/65 sm:text-lg"
             placeholder="输入域名、IP 地址或 ASN"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
@@ -137,12 +138,15 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
             spellCheck="false"
           />
 
-          <div className="shrink-0">
+          <div className={cn(
+            "relative z-10 shrink-0 overflow-hidden transition-all duration-200",
+            query.trim() ? "w-auto opacity-100" : "w-0 opacity-0"
+          )}>
             <Button 
               type="submit" 
               className={cn(
-                "h-11 rounded-xl px-4 shadow-sm shadow-primary/20 transition-all sm:px-5",
-                query.trim() ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-2 opacity-0"
+                "h-11 px-4 transition-all sm:px-5",
+                query.trim() ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"
               )}
               disabled={loading || (validation?.isValid === false)}
             >
@@ -162,16 +166,16 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
       </form>
 
       <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
-        <span className="mr-1 inline-flex items-center gap-1.5 font-medium">
+        <span className="mr-1 inline-flex items-center gap-1.5 font-medium uppercase tracking-[0.18em]">
           <Sparkles className="size-3.5" />
-          快速示例
+          示例
         </span>
         {["baidu.com", "8.8.8.8", "AS15169"].map((example) => (
           <button
             key={example}
             type="button"
             onClick={() => handleInputChange(example)}
-            className="rounded-md border border-border/80 bg-background/70 px-2.5 py-1.5 font-mono transition-colors hover:border-primary/30 hover:bg-accent hover:text-foreground"
+            className="rounded-lg border border-border/70 bg-background/55 px-2.5 py-1.5 font-mono transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground"
           >
             {example}
           </button>
