@@ -9,12 +9,11 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Copy, Share2, Clock, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Building, Mail, Phone, MapPin, Download, AlertTriangle } from "lucide-react"
+import { Copy, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // RDAP/EPP 域名状态字典
@@ -100,7 +99,7 @@ const maskEmail = (email: string) => {
   return email
 }
 
-export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
+export function WhoisResult({ data }: WhoisResultProps) {
   const [showRaw, setShowRaw] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -266,13 +265,15 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
     if (!hasData && !alwaysShow) return null
 
     return (
-      <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 h-full transition-all hover:shadow-md">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-          <User className="w-4 h-4" />
+      <Card className="h-full gap-0 py-0 shadow-none">
+        <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
+        <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <User className="size-3.5" />
           {title}
-        </h3>
+        </CardTitle>
+        </CardHeader>
         
-        <div className="space-y-3">
+        <CardContent className="space-y-3 px-5 py-5 sm:px-5">
           {hasData ? (
             <>
               {(name || org) && (
@@ -285,9 +286,9 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
               {(email || phone) && (
                  <div className="pt-2 space-y-2">
                     {email && (
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex min-w-0 items-center gap-2 text-sm">
                         <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="font-mono text-xs">{maskEmail(email)}</span>
+                        <span className="truncate font-mono text-xs">{maskEmail(email)}</span>
                       </div>
                     )}
                     {phone && (
@@ -310,35 +311,41 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
               )}
             </>
           ) : (
-             <div className="flex flex-col items-center justify-center py-6 text-muted-foreground/50">
-               <ShieldCheck className="w-8 h-8 mb-2 opacity-20" />
-               <p className="text-sm">隐私保护已开启</p>
+             <div className="flex flex-col items-center justify-center py-7 text-muted-foreground">
+               <div className="mb-3 flex size-9 items-center justify-center rounded-full bg-muted">
+                 <ShieldCheck className="size-4" />
+               </div>
+               <p className="text-xs font-medium">隐私保护已开启</p>
              </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-12">
+    <div className="mx-auto w-full max-w-6xl space-y-6 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h1 className="text-4xl font-bold text-foreground tracking-tight mb-2">
+      <div className="flex flex-col justify-between gap-5 border-b border-border/70 pb-6 md:flex-row md:items-end">
+        <div className="min-w-0">
+          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            <CircleCheck className="size-3.5" />
+            查询完成
+          </p>
+          <h1 className="truncate font-mono text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
             {normalized.domain || "查询结果"}
           </h1>
-          <div className="flex flex-wrap gap-3 items-center">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {normalized.registrar && (
-              <Badge variant="secondary" className="font-normal text-sm px-3 py-1 bg-secondary/50 hover:bg-secondary/70">
+              <Badge variant="secondary" className="max-w-full truncate px-2.5 py-1 font-normal">
                 {normalized.registrar}
               </Badge>
             )}
             {daysRemaining !== null && (
               <Badge variant="outline" className={cn(
-                "font-normal text-sm px-3 py-1 border-0",
-                daysRemaining < 30 ? "bg-red-500/10 text-red-600" : "bg-green-500/10 text-green-600"
+                "border-0 px-2.5 py-1 font-normal",
+                daysRemaining < 30 ? "bg-red-500/10 text-red-700 dark:text-red-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
               )}>
                 {daysRemaining > 0 ? `剩余 ${daysRemaining} 天` : "已过期"}
               </Badge>
@@ -346,16 +353,16 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
           </div>
         </div>
         
-        <div className="flex gap-2">
-           <Button variant="ghost" size="sm" onClick={() => handleExport('json')} className="h-9 gap-2 rounded-full hover:bg-secondary">
+        <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
+           <Button variant="outline" size="sm" onClick={() => handleExport('json')} className="rounded-lg">
              <Download className="w-4 h-4" />
-             导出 JSON
+             JSON
            </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleExport('csv')} className="h-9 gap-2 rounded-full hover:bg-secondary">
+            <Button variant="outline" size="sm" onClick={() => handleExport('csv')} className="rounded-lg">
              <Download className="w-4 h-4" />
-             导出 CSV
+             CSV
            </Button>
-           <Button variant="ghost" size="sm" onClick={handleCopy} className="h-9 gap-2 rounded-full hover:bg-secondary">
+           <Button variant="secondary" size="sm" onClick={handleCopy} className="rounded-lg">
              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
              复制
            </Button>
@@ -363,24 +370,27 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
       </div>
 
       {/* Main Info Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         
         {/* Dates Card */}
-        <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 lg:col-span-1">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-6 flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            关键日期
-          </h3>
+        <Card className="gap-0 py-0 shadow-none lg:col-span-1">
+          <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Calendar className="size-4 text-primary" />
+              关键日期
+            </CardTitle>
+            <CardDescription>注册生命周期</CardDescription>
+          </CardHeader>
           
-          <div className="space-y-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">注册时间</p>
-              <p className="text-lg font-medium font-mono">{formatDate(normalized.registrationDate)}</p>
+          <CardContent className="divide-y divide-border/60 px-5 sm:px-5">
+            <div className="py-4">
+              <p className="mb-1 text-xs text-muted-foreground">注册时间</p>
+              <p className="font-mono text-sm font-medium">{formatDate(normalized.registrationDate)}</p>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">过期时间</p>
+            <div className="py-4">
+              <p className="mb-1 text-xs text-muted-foreground">过期时间</p>
               <div className="flex items-center gap-2">
-                 <p className="text-lg font-medium font-mono">{formatDate(normalized.expirationDate)}</p>
+                 <p className="font-mono text-sm font-medium">{formatDate(normalized.expirationDate)}</p>
                  {daysRemaining !== null && daysRemaining < 30 && (
                    <TooltipProvider>
                      <Tooltip>
@@ -393,23 +403,26 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
                  )}
               </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">更新时间</p>
-              <p className="text-lg font-medium font-mono">{formatDate(normalized.updatedDate)}</p>
+            <div className="py-4">
+              <p className="mb-1 text-xs text-muted-foreground">更新时间</p>
+              <p className="font-mono text-sm font-medium">{formatDate(normalized.updatedDate)}</p>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Status & Registrar Info Card */}
-        <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 lg:col-span-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-6 flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            域名信息
-          </h3>
+        <Card className="gap-0 py-0 shadow-none lg:col-span-2">
+          <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Globe className="size-4 text-primary" />
+              域名信息
+            </CardTitle>
+            <CardDescription>注册商、状态与名称服务器</CardDescription>
+          </CardHeader>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <CardContent className="grid gap-7 px-5 py-5 sm:px-5 md:grid-cols-2">
             <div>
-                <p className="text-sm text-muted-foreground mb-3">域名状态</p>
+                <p className="mb-3 text-xs font-medium text-muted-foreground">域名状态</p>
                 <div className="flex flex-wrap gap-2">
                 {normalized.domainStatus.length > 0 ? (
                     normalized.domainStatus.map((status: string, i: number) => {
@@ -446,8 +459,13 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
             </div>
 
             <div>
-                <p className="text-sm text-muted-foreground mb-2">注册商</p>
-                <p className="font-medium text-base">{normalized.registrar || "未知"}</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">注册商</p>
+                <p className="text-sm font-semibold">{normalized.registrar || "未知"}</p>
+                {normalized.registrarUrl && (
+                  <a href={normalized.registrarUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    访问注册商 <ExternalLink className="size-3" />
+                  </a>
+                )}
                 {normalized.registrarIanaId && <p className="text-muted-foreground text-xs mt-1">IANA ID: {normalized.registrarIanaId}</p>}
                 
                 {(normalized.registrarAbuseEmail || normalized.registrarAbusePhone) && (
@@ -460,22 +478,23 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
             </div>
             
             <div className="md:col-span-2">
-               <p className="text-sm text-muted-foreground mb-3">DNS 服务器</p>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+               <p className="mb-3 text-xs font-medium text-muted-foreground">DNS 服务器</p>
+               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                    {normalized.nameServers.map((ns: string, i: number) => (
-                     <div key={i} className="flex items-center gap-2 text-sm font-mono text-foreground/80">
-                       <Server className="w-3.5 h-3.5 text-muted-foreground/50" />
+                     <div key={i} className="flex items-center gap-2 rounded-lg bg-muted/70 px-3 py-2 font-mono text-xs text-foreground/80">
+                       <Server className="size-3.5 text-muted-foreground" />
                        {ns}
                      </div>
                    ))}
+                   {normalized.nameServers.length === 0 && <span className="text-sm text-muted-foreground">无名称服务器信息</span>}
                </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
       
       {/* Contact Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
          <ContactCard title="注册人" contact={normalized.registrant} alwaysShow />
          <ContactCard title="管理员" contact={normalized.admin} alwaysShow />
          <ContactCard title="技术联系" contact={normalized.tech} alwaysShow />
@@ -483,21 +502,22 @@ export function WhoisResult({ data, onExport, onShare }: WhoisResultProps) {
       </div>
 
       {/* Raw Data Toggle */}
-      <div className="rounded-2xl border border-border/50 overflow-hidden bg-card shadow-sm">
+      <div className="overflow-hidden rounded-xl border bg-card">
         <button 
           onClick={() => setShowRaw(!showRaw)}
-          className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
+          className="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted/60"
+          aria-expanded={showRaw}
         >
           <span className="font-medium flex items-center gap-2 text-sm text-muted-foreground">
             <Server className="w-4 h-4" />
-            查看原始数据
+            原始查询数据
           </span>
           {showRaw ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
         
         {showRaw && (
-          <div className="border-t border-border/50 bg-secondary/10 overflow-x-auto max-h-[500px]">
-             <pre className="p-6 text-xs font-mono leading-relaxed whitespace-pre-wrap text-muted-foreground selection:bg-primary/20">
+          <div className="max-h-[500px] overflow-x-auto border-t bg-muted/30">
+             <pre className="whitespace-pre-wrap p-5 font-mono text-xs leading-relaxed text-muted-foreground selection:bg-primary/20 sm:p-6">
                {raw || JSON.stringify(data, null, 2)}
              </pre>
           </div>

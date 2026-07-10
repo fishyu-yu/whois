@@ -14,7 +14,7 @@ import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { History, X, Search, Clock } from "lucide-react"
+import { History, X, Clock, Database, ShieldCheck, Network, ArrowUpRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface WhoisData {
@@ -132,52 +132,74 @@ export default function Home() {
         isHistoryActive={showHistory}
       />
 
-      <div className="flex-1 flex flex-col items-center w-full transition-all duration-700">
+      <main className="flex w-full flex-1 flex-col items-center">
         
         {/* Search Section */}
-        <div className={cn(
-          "w-full px-4 transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+        <section className={cn(
+          "w-full px-4 transition-all duration-500 sm:px-6",
           currentResult 
-            ? "pt-8 pb-4 max-w-5xl mx-auto" 
-            : "flex-1 flex flex-col justify-center items-center -mt-20 max-w-3xl mx-auto"
+            ? "mx-auto max-w-6xl pb-6 pt-8"
+            : "mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center py-20 sm:py-28"
         )}>
           {!currentResult && (
-             <div className="text-center space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
-                  鲸探<span className="text-primary">·域名查询</span>
+             <div className="mb-10 max-w-3xl text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
+                  <span className="size-1.5 rounded-full bg-primary shadow-[0_0_0_4px_oklch(0.56_0.21_256/0.12)]" />
+                  RDAP · WHOIS 网络信息查询
+                </div>
+                <h1 className="text-balance text-4xl font-semibold tracking-[-0.045em] text-foreground sm:text-6xl lg:text-7xl">
+                  看清一个域名的
+                  <span className="block text-primary">完整网络画像</span>
                 </h1>
-                <p className="text-xl text-muted-foreground max-w-lg mx-auto leading-relaxed font-light">
-                  为你整理好每一个域名的注册信息与网络画像。
+                <p className="text-balance mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                  聚合注册信息、关键日期、域名状态与 DNS 数据，快速查询域名、IP 地址和 ASN。
                 </p>
              </div>
           )}
 
           <div className={cn(
             "w-full transition-all duration-500",
-            !currentResult && "animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-100"
+            !currentResult && "animate-in fade-in slide-in-from-bottom-6 duration-700"
           )}>
             <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={currentResult?.query} />
           </div>
 
+          {!currentResult && (
+            <div className="mt-12 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                { icon: Database, title: "结构化数据", description: "清晰呈现注册与解析信息" },
+                { icon: Network, title: "多类型查询", description: "支持域名、IP 与 ASN" },
+                { icon: ShieldCheck, title: "本地历史", description: "查询记录仅保存在浏览器" },
+              ].map((item) => (
+                <div key={item.title} className="rounded-xl border border-border/70 bg-card/65 p-4 text-left backdrop-blur-sm">
+                  <item.icon className="mb-3 size-4 text-primary" />
+                  <p className="text-sm font-semibold">{item.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {!currentResult && history.length > 0 && (
-             <div className="mt-8 flex flex-wrap justify-center gap-2 animate-in fade-in duration-1000 delay-300">
-                <span className="text-sm text-muted-foreground mr-2 py-1">最近查询：</span>
+             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                <span className="mr-1 text-xs font-medium text-muted-foreground">最近查询</span>
                 {history.slice(0, 3).map((item, i) => (
                   <button 
                     key={i}
                     onClick={() => handleQuery(item.query, item.type)}
-                    className="text-sm px-3 py-1 rounded-full bg-secondary/30 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                    className="group inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     {item.query}
+                    <ArrowUpRight className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
                   </button>
                 ))}
              </div>
           )}
-        </div>
+        </section>
 
         {/* Result Area */}
-        <div className={cn(
-          "w-full px-4 pb-12 transition-all duration-700 delay-100",
+        <section className={cn(
+          "w-full px-4 pb-12 transition-all duration-500 sm:px-6",
           currentResult ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12 pointer-events-none hidden"
         )}>
           {currentResult && (
@@ -187,8 +209,8 @@ export default function Home() {
                 onShare={() => {}} 
               />
           )}
-        </div>
-      </div>
+        </section>
+      </main>
 
       {/* History Sidebar/Overlay - Apple Style */}
       <div className={cn(
@@ -197,27 +219,30 @@ export default function Home() {
       )}>
         <div 
           className={cn(
-            "absolute inset-0 bg-background/20 backdrop-blur-sm transition-opacity duration-300",
+            "absolute inset-0 bg-foreground/10 backdrop-blur-[2px] transition-opacity duration-300 dark:bg-black/40",
             showHistory ? "opacity-100" : "opacity-0"
           )} 
           onClick={() => setShowHistory(false)} 
         />
         
         <div className={cn(
-          "absolute inset-y-0 right-0 w-full max-w-sm bg-background/80 backdrop-blur-xl border-l border-border shadow-2xl p-6 transform transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "absolute inset-y-0 right-0 w-full max-w-md transform border-l border-border bg-background/95 p-5 shadow-2xl backdrop-blur-xl transition-transform duration-300 sm:p-6",
           showHistory ? "translate-x-0" : "translate-x-full"
         )}>
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-semibold text-xl tracking-tight flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
-              历史记录
-            </h3>
-            <Button variant="ghost" size="icon" className="rounded-full hover:bg-secondary" onClick={() => setShowHistory(false)}>
-              <X className="w-5 h-5" />
+          <div className="mb-6 flex items-start justify-between border-b border-border/70 pb-5">
+            <div>
+              <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                <Clock className="size-4 text-primary" />
+                查询历史
+              </h3>
+              <p className="mt-1.5 text-xs text-muted-foreground">最近的 20 条查询保存在此设备</p>
+            </div>
+            <Button variant="ghost" size="icon" aria-label="关闭历史记录" className="rounded-lg" onClick={() => setShowHistory(false)}>
+              <X className="size-4" />
             </Button>
           </div>
           
-          <div className="space-y-2 overflow-y-auto h-[calc(100vh-120px)] -mr-4 pr-4">
+          <div className="-mr-2 h-[calc(100vh-112px)] space-y-2 overflow-y-auto pr-2">
             {history.map((item, i) => (
               <button
                 key={i}
@@ -225,19 +250,22 @@ export default function Home() {
                   handleQuery(item.query, item.type)
                   setShowHistory(false)
                 }}
-                className="w-full text-left p-4 rounded-2xl hover:bg-secondary/50 transition-all group border border-transparent hover:border-border/50"
+                className="group w-full rounded-xl border border-transparent p-3.5 text-left transition-colors hover:border-border hover:bg-card"
               >
-                <div className="font-medium text-lg group-hover:text-primary transition-colors truncate">{item.query}</div>
-                <div className="text-xs text-muted-foreground flex justify-between mt-1 font-medium">
+                <div className="truncate font-mono text-sm font-semibold transition-colors group-hover:text-primary">{item.query}</div>
+                <div className="mt-2 flex justify-between text-[11px] font-medium text-muted-foreground">
                   <span className="uppercase tracking-wider opacity-70">{item.type}</span>
                   <span>{new Date(item.timestamp).toLocaleDateString()}</span>
                 </div>
               </button>
             ))}
             {history.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50">
-                 <History className="w-12 h-12 mb-4 opacity-20" />
-                 <p className="text-sm">暂无历史记录，先随便查一个试试？</p>
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20 text-muted-foreground">
+                 <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-muted">
+                   <History className="size-4" />
+                 </div>
+                 <p className="text-sm font-medium text-foreground">暂无历史记录</p>
+                 <p className="mt-1 text-xs">完成一次查询后会显示在这里</p>
               </div>
             )}
           </div>

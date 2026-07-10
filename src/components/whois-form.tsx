@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight } from "lucide-react"
+import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight, Sparkles } from "lucide-react"
 import { validateDomain } from "@/lib/domain-utils"
 import { cn } from "@/lib/utils"
 
@@ -23,7 +23,6 @@ interface WhoisFormProps {
 
 export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
   const [query, setQuery] = useState(defaultValue || "")
-  const [queryType, setQueryType] = useState("auto")
   const [validation, setValidation] = useState<{ isValid: boolean; message?: string; type?: string } | null>(null)
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -85,7 +84,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
     if (!query.trim() || (validation && !validation.isValid)) return
 
     const autoDetected = detectQueryType(query.trim())
-    const detectedType = queryType === "auto" ? autoDetected : queryType
+    const detectedType = autoDetected
 
     if (detectedType === "unknown") {
       setValidation({ isValid: false, message: "请输入有效的域名/IP/ASN", type: "unknown" })
@@ -106,24 +105,28 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-4">
-      <form onSubmit={handleSubmit} className="relative group">
+    <div className="mx-auto w-full max-w-3xl space-y-4">
+      <form onSubmit={handleSubmit} className="group relative">
+        <label htmlFor="whois-query" className="sr-only">域名、IP 或 ASN</label>
         <div 
           className={cn(
-            "relative flex items-center w-full transition-all duration-300 rounded-2xl border bg-background/50 backdrop-blur-xl shadow-sm overflow-hidden",
-            isFocused ? "ring-2 ring-primary/20 border-primary shadow-lg scale-[1.01]" : "border-border/50 hover:border-primary/50",
-            validation?.isValid === false && "border-destructive ring-destructive/20"
+            "surface-shadow relative flex w-full items-center overflow-hidden rounded-2xl border bg-card p-2 transition-all duration-200",
+            isFocused ? "border-primary/60 ring-4 ring-primary/10" : "border-border hover:border-foreground/20",
+            validation?.isValid === false && "border-destructive/70 ring-4 ring-destructive/10"
           )}
         >
-          <div className="pl-6 pr-4 py-4 flex items-center justify-center">
-            {loading ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : getIcon()}
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted sm:ml-1">
+            {loading ? <Loader2 className="size-5 animate-spin text-primary" /> : getIcon()}
           </div>
           
           <input
+            id="whois-query"
             ref={inputRef}
             type="text"
-            className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-muted-foreground/50 py-6 h-16 w-full"
-            placeholder="请输入要查询的域名、IP 或 ASN 号码"
+            aria-invalid={validation?.isValid === false}
+            aria-describedby={validation?.isValid === false ? "query-error" : undefined}
+            className="h-14 min-w-0 flex-1 border-none bg-transparent px-4 text-base font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/70 sm:text-lg"
+            placeholder="输入域名、IP 地址或 ASN"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setIsFocused(true)}
@@ -134,35 +137,45 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
             spellCheck="false"
           />
 
-          <div className="pr-2">
+          <div className="shrink-0">
             <Button 
-              size="icon" 
               type="submit" 
               className={cn(
-                "h-12 w-12 rounded-xl transition-all duration-300 shadow-md",
-                query.trim() ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none"
+                "h-11 rounded-xl px-4 shadow-sm shadow-primary/20 transition-all sm:px-5",
+                query.trim() ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-2 opacity-0"
               )}
               disabled={loading || (validation?.isValid === false)}
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
+              <span className="hidden sm:inline">开始查询</span>
             </Button>
           </div>
         </div>
 
-        {/* Validation Message */}
         <div className={cn(
-          "absolute -bottom-8 left-0 text-sm font-medium transition-all duration-300 flex items-center gap-2",
-          validation?.isValid === false ? "opacity-100 translate-y-0 text-destructive" : "opacity-0 -translate-y-2 pointer-events-none"
+          "absolute -bottom-7 left-1 flex items-center gap-1.5 text-xs font-medium transition-all duration-200",
+          validation?.isValid === false ? "translate-y-0 text-destructive opacity-100" : "pointer-events-none -translate-y-1 opacity-0"
         )}>
-          <AlertCircle className="w-4 h-4" />
-          {validation?.message}
+          <AlertCircle className="size-3.5" />
+          <span id="query-error" role="alert">{validation?.message}</span>
         </div>
       </form>
 
-      <div className="flex flex-wrap gap-2 justify-center text-sm text-muted-foreground/80 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("baidu.com")}>baidu.com</span>
-        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("8.8.8.8")}>8.8.8.8</span>
-        <span className="px-3 py-1 rounded-full bg-secondary/30 border border-secondary/20 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => handleInputChange("AS15169")}>AS15169</span>
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
+        <span className="mr-1 inline-flex items-center gap-1.5 font-medium">
+          <Sparkles className="size-3.5" />
+          快速示例
+        </span>
+        {["baidu.com", "8.8.8.8", "AS15169"].map((example) => (
+          <button
+            key={example}
+            type="button"
+            onClick={() => handleInputChange(example)}
+            className="rounded-md border border-border/80 bg-background/70 px-2.5 py-1.5 font-mono transition-colors hover:border-primary/30 hover:bg-accent hover:text-foreground"
+          >
+            {example}
+          </button>
+        ))}
       </div>
     </div>
   )

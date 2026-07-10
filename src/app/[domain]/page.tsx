@@ -14,7 +14,7 @@ import { WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Header } from "@/components/header"
-import { Loader2 } from "lucide-react"
+import { Loader2, Radar } from "lucide-react"
 
 interface WhoisData {
   query: string
@@ -93,16 +93,25 @@ export default function DomainPage() {
     <LayoutWrapper>
       <Header showBack={true} />
 
-      <div className="flex-1 flex flex-col items-center w-full max-w-5xl mx-auto px-4 pt-8 pb-12 transition-all duration-700">
-        <div className="w-full mb-12">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-4 pb-12 pt-8 sm:px-6">
+        <div className="mb-10 w-full rounded-2xl border border-border/70 bg-card/65 p-4 backdrop-blur-sm sm:p-6">
+            <div className="mb-5 flex items-center gap-2 text-sm font-semibold">
+              <Radar className="size-4 text-primary" />
+              继续查询
+            </div>
             <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={domain} />
         </div>
 
-        <div className="w-full transition-all duration-700 min-h-[400px]">
+        <div className="min-h-[400px] w-full transition-all duration-500">
           {loading ? (
-              <div className="flex flex-col items-center justify-center py-32 gap-6 text-muted-foreground">
-                  <Loader2 className="w-10 h-10 animate-spin text-primary/50" />
-                  <p className="text-lg font-light">正在为 <span className="font-medium text-foreground">{domain}</span> 加载域名情报...</p>
+              <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border border-dashed py-28 text-muted-foreground">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
+                    <Loader2 className="size-5 animate-spin text-primary" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-foreground">正在查询 {domain}</p>
+                    <p className="mt-1 text-sm">正在连接 RDAP 数据源并整理结果</p>
+                  </div>
               </div>
           ) : currentResult ? (
               <WhoisResult 
@@ -112,7 +121,7 @@ export default function DomainPage() {
               />
           ) : null}
         </div>
-      </div>
+      </main>
     </LayoutWrapper>
   )
 }
