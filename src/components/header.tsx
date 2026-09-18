@@ -54,7 +54,7 @@ export function Header({
             </Button>
           )}
           
-          <Link href="https://github.com/FishYu/whois" target="_blank" aria-label="打开 GitHub 仓库">
+          <Link href="https://github.com/fishyu-yu/whois" target="_blank" aria-label="打开 GitHub 仓库">
             <Button variant="ghost" size="icon" className="size-9 text-muted-foreground hover:text-foreground">
               <Github className="w-5 h-5" />
             </Button>

@@ -47,7 +47,7 @@ export const CCTLD_DATABASE: Record<string, CCTLDInfo> = {
     countryEn: 'Taiwan',
     registry: 'TWNIC (Taiwan Network Information Center)',
     registryUrl: 'https://www.twnic.net/',
-    whoisServer: 'whois.twnic.net',
+    whoisServer: 'whois.twnic.net.tw',
     idn: true,
     active: true
   },

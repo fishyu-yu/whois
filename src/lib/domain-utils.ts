@@ -72,7 +72,7 @@ export function validateDomain(domain: string): DomainValidationResult {
   }
 
   // 检查是否包含非法字符
-  if (/[^a-z0-9.-\u00a0-\uffff]/.test(trimmedDomain)) {
+  if (/[^a-z0-9.\u00a0-\uffff-]/.test(trimmedDomain)) {
     result.errors.push('域名包含非法字符');
     return result;
   }

@@ -95,11 +95,10 @@ const RDAP_SERVERS = {
   'biz': 'https://rdap.afilias.net/rdap/afilias',
   
   // 国别顶级域名
-  'cn': 'https://rdap.cnnic.cn',
-  'uk': 'https://rdap.nominet.uk',
+  // .cn / .jp currently publish WHOIS rather than domain RDAP in IANA.
+  'uk': 'https://rdap.nominet.uk/uk',
   'de': 'https://rdap.denic.de',
   'fr': 'https://rdap.nic.fr',
-  'jp': 'https://rdap.nic.ad.jp',
   
   // 新顶级域名
   'xyz': 'https://rdap.centralnic.com/xyz',
@@ -110,10 +109,12 @@ const RDAP_SERVERS = {
   'asia': 'https://rdap.identitydigital.services/rdap'
 };
 
-// IANA RDAP Bootstrap动态映射（优先级低于静态表，作为补充）
+// Prefer IANA; verified static endpoints also cover registries not in bootstrap.
 const BOOTSTRAP_URL = 'https://data.iana.org/rdap/dns.json';
 let dynamicRdapMap: Record<string, string[]> | null = null;
 let lastBootstrapFetch = 0;
+let bootstrapRequest: Promise<void> | null = null;
+let lastBootstrapAttempt = 0;
 const BOOTSTRAP_TTL = 24 * 60 * 60 * 1000; // 24小时缓存
 
 /**
@@ -133,21 +134,35 @@ const BOOTSTRAP_TTL = 24 * 60 * 60 * 1000; // 24小时缓存
 async function ensureBootstrapLoaded(): Promise<void> {
   const now = Date.now();
   if (dynamicRdapMap && (now - lastBootstrapFetch) < BOOTSTRAP_TTL) return;
+  if (bootstrapRequest) return bootstrapRequest;
+  if (now - lastBootstrapAttempt < 60000) return;
+  lastBootstrapAttempt = now;
+  bootstrapRequest = loadBootstrap();
+  try { await bootstrapRequest; } finally { bootstrapRequest = null; }
+}
+
+async function fetchJson(url: string, accept = 'application/rdap+json') {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    const res = await fetch(BOOTSTRAP_URL, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'WHOIS-Tool/1.0'
-      },
-      signal: controller.signal
+    const response = await fetch(url, {
+      headers: { Accept: accept, 'User-Agent': 'WHOIS-Tool/1.0' },
+      signal: controller.signal,
     });
+    const data = await response.json();
+    return { response, data };
+  } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+async function loadBootstrap(): Promise<void> {
+  try {
+    const { response: res, data } = await fetchJson(BOOTSTRAP_URL, 'application/json');
     if (!res.ok) {
       throw new Error(`Failed to fetch IANA RDAP bootstrap: ${res.status} ${res.statusText}`);
     }
-    const data = await res.json();
+    if (!Array.isArray(data.services)) throw new Error('Invalid IANA RDAP bootstrap');
     const map: Record<string, string[]> = {};
     if (Array.isArray(data.services)) {
       for (const entry of data.services) {
@@ -165,16 +180,10 @@ async function ensureBootstrapLoaded(): Promise<void> {
       }
     }
     dynamicRdapMap = map;
-    lastBootstrapFetch = now;
+    lastBootstrapFetch = Date.now();
   } catch (e) {
     console.warn('IANA RDAP bootstrap fetch failed:', e);
   }
-}
-
-async function getRDAPServerAsync(domain: string): Promise<string | null> {
-  // 兼容旧接口：返回可用服务器中的第一个
-  const servers = await getRDAPServersAsync(domain);
-  return servers[0] || null;
 }
 
 /**
@@ -205,16 +214,16 @@ async function getRDAPServersAsync(domain: string): Promise<string[]> {
   const tld = getTLD(domain);
   const dynamic = dynamicRdapMap ? dynamicRdapMap[tld] : undefined;
   const staticBase = RDAP_SERVERS[tld as keyof typeof RDAP_SERVERS] || null;
-  const servers = Array.isArray(dynamic) && dynamic.length > 0 ? dynamic : (staticBase ? [staticBase] : []);
+  const servers = dynamic?.length ? dynamic : (staticBase ? [staticBase] : []);
   return servers;
 }
 
 /**
  * 获取RDAP服务器URL
  */
-function getRDAPServer(domain: string): string | null {
-  const tld = getTLD(domain);
-  return RDAP_SERVERS[tld as keyof typeof RDAP_SERVERS] || null;
+function isDomainResponse(data: RDAPResponse, domain: string): boolean {
+  return data?.objectClassName === 'domain'
+    && toASCII(data.ldhName || data.unicodeName || '') === domain;
 }
 
 /**
@@ -222,9 +231,11 @@ function getRDAPServer(domain: string): string | null {
  */
 export async function queryDomainRDAP(domain: string, options?: { queryParams?: Record<string, string>; preferSource?: 'registrar' | 'registry' }): Promise<(RDAPResponse & { rdapSource?: 'registrar' | 'registry'; registryRaw?: RDAPResponse; registrarRaw?: RDAPResponse }) | null> {
   const asciiDomain = toASCII(domain);
+  const paramsStr = options?.queryParams ? `?${new URLSearchParams(options.queryParams).toString()}` : '';
+  const cacheKey = `${asciiDomain}:${options?.preferSource || 'registrar'}:${paramsStr}`;
 
   // 缓存命中
-  const cached = rdapCache.get(asciiDomain);
+  const cached = rdapCache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp) < RDAP_CACHE_TTL_MS) {
     return { ...(cached.data as RDAPResponse), rdapSource: cached.rdapSource, registryRaw: (cached as any).data.registryRaw, registrarRaw: (cached as any).data.registrarRaw } as any;
   }
@@ -234,39 +245,30 @@ export async function queryDomainRDAP(domain: string, options?: { queryParams?: 
     throw new Error(`No RDAP server found for domain: ${asciiDomain}`);
   }
 
-  const paramsStr = options?.queryParams ? `?${new URLSearchParams(options.queryParams).toString()}` : '';
-
   // 依次尝试多个服务器，直到成功
   let registryData: RDAPResponse | null = null;
-  let usedServerBase: string | null = null;
+  let notFound = false;
   for (const serverBase of servers) {
     const registryUrl = `${serverBase}/domain/${asciiDomain}${paramsStr}`;
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      const registryResponse = await fetch(registryUrl, {
-        headers: {
-          'Accept': 'application/rdap+json',
-          'User-Agent': 'WHOIS-Tool/1.0'
-        },
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+      const { response: registryResponse, data } = await fetchJson(registryUrl);
 
       if (!registryResponse.ok) {
+        if (registryResponse.status === 404 && data?.errorCode === 404) notFound = true;
         // 尝试下一个服务器
         continue;
       }
-      registryData = await registryResponse.json();
-      usedServerBase = serverBase;
+      if (!isDomainResponse(data, asciiDomain)) continue;
+      registryData = data;
       break;
-    } catch (error) {
+    } catch {
       // 超时或网络错误，继续尝试下一个服务器
       continue;
     }
   }
 
   if (!registryData) {
+    if (notFound) throw new Error('RDAP_NOT_FOUND');
     throw new Error(`RDAP query failed on all servers for ${asciiDomain}`);
   }
 
@@ -280,9 +282,6 @@ export async function queryDomainRDAP(domain: string, options?: { queryParams?: 
 
   if ((extractedUrl || registrarRdapServer) && preferred !== 'registry') {
     try {
-      const registrarController = new AbortController();
-      const registrarTimeoutId = setTimeout(() => registrarController.abort(), 10000);
-
       let registrarUrl: string;
       if (extractedUrl) {
         // 清理可能存在的反引号与空白
@@ -299,17 +298,8 @@ export async function queryDomainRDAP(domain: string, options?: { queryParams?: 
         registrarUrl = `${(registrarRdapServer as string).replace(/\/$/, '')}/domain/${asciiDomain}${paramsStr}`;
       }
 
-      const registrarResponse = await fetch(registrarUrl, {
-        headers: {
-          'Accept': 'application/rdap+json',
-          'User-Agent': 'WHOIS-Tool/1.0'
-        },
-        signal: registrarController.signal
-      });
-      clearTimeout(registrarTimeoutId);
-
-      if (registrarResponse.ok) {
-        const registrarData = await registrarResponse.json();
+      const { response: registrarResponse, data: registrarData } = await fetchJson(registrarUrl);
+      if (registrarResponse.ok && isDomainResponse(registrarData, asciiDomain)) {
         finalData = { ...registrarData, rdapSource: 'registrar', registryRaw: registryData, registrarRaw: registrarData };
       }
     } catch {
@@ -319,7 +309,8 @@ export async function queryDomainRDAP(domain: string, options?: { queryParams?: 
   }
 
   // 写入缓存（包含原始两端数据）
-  rdapCache.set(asciiDomain, { data: finalData as any, rdapSource: finalData.rdapSource, timestamp: Date.now() });
+  if (rdapCache.size >= 500) rdapCache.delete(rdapCache.keys().next().value!);
+  rdapCache.set(cacheKey, { data: finalData as any, rdapSource: finalData.rdapSource, timestamp: Date.now() });
 
   return finalData;
 }
@@ -399,5 +390,5 @@ export function isRDAPSupported(domain: string): boolean {
 
 export function getSupportedTLDs(): string[] {
   const dynamicTlds = dynamicRdapMap ? Object.keys(dynamicRdapMap) : [];
-  return Array.from(new Set([...dynamicTlds]));
+  return Array.from(new Set([...dynamicTlds, ...Object.keys(RDAP_SERVERS)]));
 }

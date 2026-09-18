@@ -42,6 +42,8 @@ self.addEventListener('fetch', (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
+  // Query freshness is controlled by the API's short server-side cache.
+  if (requestUrl.pathname.startsWith('/api/')) return;
   const isAppShell = event.request.mode === 'navigate' || event.request.destination === 'document';
   const isNextAsset = requestUrl.pathname.startsWith('/_next/');
 
