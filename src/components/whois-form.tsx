@@ -12,8 +12,9 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight } from "lucide-react"
-import { validateDomain } from "@/lib/domain-utils"
 import { cn } from "@/lib/utils"
+import { detectQueryType } from "@/lib/query-utils"
+export { detectQueryType } from "@/lib/query-utils"
 
 interface WhoisFormProps {
   onSubmit: (query: string, type: string, dataSource?: string) => void
@@ -21,73 +22,32 @@ interface WhoisFormProps {
   defaultValue?: string
 }
 
-export function detectQueryType(input: string): string {
-  const domainRegex = /^[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$|^xn--[a-zA-Z0-9-]+(\.[a-zA-Z0-9\u00a0-\uffff]([a-zA-Z0-9\u00a0-\uffff-]{0,61}[a-zA-Z0-9\u00a0-\uffff])?)*$/
-  const ipv4Regex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.)){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
-  const ipv6Regex = /^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$/
-  const asnRegex = /^(AS)?\d{1,10}$/i
-
-  if (ipv4Regex.test(input) || ipv6Regex.test(input)) return "ip"
-  if (!input.includes('.') && !input.includes(':') && asnRegex.test(input)) return "asn"
-  if (domainRegex.test(input)) return "domain"
-  return "unknown"
-}
-
 export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
   const [query, setQuery] = useState(defaultValue || "")
-  const [validation, setValidation] = useState<{ isValid: boolean; message?: string; type?: string } | null>(null)
+  const detectedType = detectQueryType(query)
+  const validation = query.trim() ? {
+    isValid: detectedType !== 'unknown', type: detectedType,
+    message: detectedType === 'unknown' ? '请输入有效的域名、IP / CIDR 或 ASN（1–4294967295）' : undefined,
+  } : null
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (defaultValue) {
-      handleInputChange(defaultValue)
-    }
-  }, []) // Run once on mount if defaultValue exists
-
-  // If defaultValue updates (e.g. navigation), update query
-  useEffect(() => {
-    if (defaultValue && defaultValue !== query) {
-        setQuery(defaultValue)
-        handleInputChange(defaultValue)
-    }
+    if (defaultValue !== undefined) setQuery(defaultValue)
   }, [defaultValue])
 
   const handleInputChange = (value: string) => {
     setQuery(value)
-    
-    if (!value.trim()) {
-      setValidation(null)
-      return
-    }
-
-    const type = detectQueryType(value)
-    
-    if (type === "domain") {
-      const res = validateDomain(value.trim())
-      if (res.isValid) {
-        setValidation({ isValid: true, type: "domain" })
-      } else {
-        setValidation({ isValid: false, message: res.errors[0], type: "domain" })
-      }
-    } else if (type === "ip") {
-      setValidation({ isValid: true, type: "ip" })
-    } else if (type === "asn") {
-      setValidation({ isValid: true, type: "asn" })
-    } else {
-      setValidation({ isValid: false, message: "无效的查询格式", type: "unknown" })
-    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!query.trim() || (validation && !validation.isValid)) return
+    if (loading || !query.trim() || (validation && !validation.isValid)) return
 
     const autoDetected = detectQueryType(query.trim())
     const detectedType = autoDetected
 
     if (detectedType === "unknown") {
-      setValidation({ isValid: false, message: "请输入有效的域名/IP/ASN", type: "unknown" })
       return
     }
 
@@ -143,6 +103,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
           )}>
             <Button 
               type="submit" 
+              aria-label="开始查询"
               className={cn(
                 "h-11 px-4 transition-all sm:px-5",
                 query.trim() ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"
@@ -156,8 +117,8 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
         </div>
 
         <div className={cn(
-          "absolute -bottom-7 left-1 flex items-center gap-1.5 text-xs font-medium transition-all duration-200",
-          validation?.isValid === false ? "translate-y-0 text-destructive opacity-100" : "pointer-events-none -translate-y-1 opacity-0"
+          "items-center gap-1.5 text-xs font-medium",
+          validation?.isValid === false ? "mt-3 flex text-destructive" : "hidden"
         )}>
           <AlertCircle className="size-3.5" />
           <span id="query-error" role="alert">{validation?.message}</span>

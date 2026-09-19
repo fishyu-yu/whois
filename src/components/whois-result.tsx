@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Copy, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { csvContent, exportBasename } from "@/lib/export-utils"
 
 // RDAP/EPP 域名状态字典
 const STATUS_INFO: Record<string, { label: string; severity: number; description?: string }> = {
@@ -71,7 +72,9 @@ const getStatusInfo = (code: string) => {
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return "未知"
   try {
-    return new Date(dateStr).toLocaleDateString("zh-CN", {
+    const date = new Date(dateStr)
+    if (Number.isNaN(date.getTime())) return dateStr
+    return date.toLocaleDateString("zh-CN", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -87,6 +90,7 @@ const calculateDaysRemaining = (dateStr?: string) => {
   if (!dateStr) return null
   try {
     const target = new Date(dateStr).getTime()
+    if (Number.isNaN(target)) return null
     const now = new Date().getTime()
     const diff = target - now
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
@@ -104,6 +108,7 @@ const formatDisplayValue = (value: any): string => {
 export function WhoisResult({ data }: WhoisResultProps) {
   const [showRaw, setShowRaw] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
 
   if (!data || !data.result) return null
 
@@ -141,6 +146,12 @@ export function WhoisResult({ data }: WhoisResultProps) {
         : null
  
   const parsed = effective?.parsed || null
+  const queryType = effective?.type || data.type
+  const isNetwork = queryType === 'ip' || queryType === 'asn'
+  const queryTitle = isNetwork ? effective?.query || data.query : null
+  const networkFields = queryType === 'ip'
+    ? [["网络名称", parsed?.network_name], ["IP 版本", parsed?.ip_version], ["IP 范围", parsed?.ip_range], ["CIDR 网段", parsed?.cidr], ["所属组织", parsed?.organization], ["注册地区", parsed?.country], ["分配类型", parsed?.network_type], ["注册机构", parsed?.registry], ["记录标识", parsed?.handle], ["状态", parsed?.status]]
+    : [["ASN", parsed?.asn], ["网络名称", parsed?.network_name], ["ASN 范围", parsed?.asn_range], ["所属组织", parsed?.organization], ["注册地区", parsed?.country], ["分配类型", parsed?.network_type], ["注册机构", parsed?.registry], ["记录标识", parsed?.handle], ["状态", parsed?.status]]
   const rdapRawPayload: Record<string, any> = {}
   if (effective?.rdapRegistryRaw) rdapRawPayload.registry = effective.rdapRegistryRaw
   if (effective?.rdapRegistrarRaw) rdapRawPayload.registrar = effective.rdapRegistrarRaw
@@ -277,27 +288,37 @@ export function WhoisResult({ data }: WhoisResultProps) {
       case "registrar": return "WHOIS · 注册商"
       case "registry": return "WHOIS · 注册局"
       case "standard": return "WHOIS"
+      case "rdap-rir": return `RDAP · ${parsed?.registry || '区域注册机构'}`
+      case "whois-rir": return `WHOIS · ${parsed?.registry || '区域注册机构'}`
       default: return null
     }
   })()
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(raw)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(raw)
+      setCopied(true)
+      setCopyError(false)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { setCopyError(true) }
   }
 
   const handleExport = (format: 'json' | 'csv') => {
       let content = ""
       let type = ""
-      let filename = `whois-${normalized.domain || 'query'}`
+      let filename = exportBasename(queryTitle || normalized.domain || data.query || 'query')
 
       if (format === 'json') {
           content = JSON.stringify(data, null, 2)
           type = "application/json"
           filename += ".json"
       } else {
-          const rows = [
+          const rows = isNetwork ? [
+              ["字段", "值"],
+              [queryType === 'ip' ? 'IP / CIDR' : 'ASN', queryTitle],
+              ...allFields.map(([key, value]) => [key, formatDisplayValue(value)]),
+              ["原始数据", raw],
+          ] : [
               ["字段", "值"],
               ["域名", normalized.domain],
               ["注册商", normalized.registrar],
@@ -308,9 +329,9 @@ export function WhoisResult({ data }: WhoisResultProps) {
               ["状态", normalized.domainStatus.join("; ")],
               ["注册人名称", normalized.registrant.name || normalized.registrant.organization || ""],
               ["注册人邮箱", normalized.registrant.email || ""],
-              ["原始数据", `"${raw.replace(/"/g, '""')}"`]
+              ["原始数据", raw]
           ]
-          content = rows.map(r => r.join(",")).join("\n")
+          content = csvContent(rows)
           type = "text/csv"
           filename += ".csv"
       }
@@ -419,13 +440,13 @@ export function WhoisResult({ data }: WhoisResultProps) {
             <CircleCheck className="size-3.5" />
             查询完成
           </p>
-          <h1 className="truncate text-3xl font-semibold text-foreground sm:text-4xl">
-            {normalized.domain || "查询结果"}
+          <h1 className="break-all text-3xl font-semibold text-foreground sm:text-4xl">
+            {queryTitle || normalized.domain || "查询结果"}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {normalized.registrar && (
+            {(isNetwork ? parsed?.network_name : normalized.registrar) && (
               <Badge variant="secondary" className="max-w-full truncate rounded-lg px-2.5 py-1 font-normal">
-                {normalized.registrar}
+                {isNetwork ? parsed?.network_name : normalized.registrar}
               </Badge>
             )}
             {sourceLabel && (
@@ -455,7 +476,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
            </Button>
            <Button variant="secondary" size="sm" onClick={handleCopy}>
              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-             复制
+             {copied ? '已复制' : copyError ? '复制失败，请重试' : '复制'}
            </Button>
         </div>
       </div>
@@ -470,7 +491,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
               <Calendar className="size-4 text-primary" />
               关键日期
             </CardTitle>
-            <CardDescription>注册生命周期</CardDescription>
+            <CardDescription>{isNetwork ? '网络资源登记时间' : '注册生命周期'}</CardDescription>
           </CardHeader>
           
           <CardContent className="divide-y divide-border/45 px-5 sm:px-5">
@@ -478,7 +499,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
               <p className="mb-1 text-xs text-muted-foreground">注册时间</p>
               <p className="font-mono text-sm font-medium">{formatDate(normalized.registrationDate)}</p>
             </div>
-            <div className="py-4">
+            {!isNetwork && <div className="py-4">
               <p className="mb-1 text-xs text-muted-foreground">过期时间</p>
               <div className="flex items-center gap-2">
                  <p className="font-mono text-sm font-medium">{formatDate(normalized.expirationDate)}</p>
@@ -493,7 +514,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
                    </TooltipProvider>
                  )}
               </div>
-            </div>
+            </div>}
             <div className="py-4">
               <p className="mb-1 text-xs text-muted-foreground">更新时间</p>
               <p className="font-mono text-sm font-medium">{formatDate(normalized.updatedDate)}</p>
@@ -502,7 +523,23 @@ export function WhoisResult({ data }: WhoisResultProps) {
         </Card>
 
         {/* Status & Registrar Info Card */}
-        <Card className="gap-0 py-0 lg:col-span-2">
+        {isNetwork ? <Card className="min-w-0 gap-0 py-0 lg:col-span-2">
+          <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Globe className="size-4 text-primary" />
+              {queryType === 'ip' ? 'IP 信息' : 'ASN 信息'}
+            </CardTitle>
+            <CardDescription>{queryType === 'ip' ? '地址范围、所属组织与分配信息' : '自治系统、所属组织与注册信息'}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid min-w-0 gap-x-8 px-5 py-1 sm:grid-cols-2 sm:px-5">
+            {networkFields.filter(([, value]) => formatDisplayValue(value)).map(([label, value]) => (
+              <div key={label} className="min-w-0 py-4">
+                <p className="mb-1 text-xs text-muted-foreground">{label}</p>
+                <p className="whitespace-pre-wrap break-all text-sm font-medium leading-6">{formatDisplayValue(value)}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card> : <Card className="gap-0 py-0 lg:col-span-2">
           <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Globe className="size-4 text-primary" />
@@ -581,15 +618,15 @@ export function WhoisResult({ data }: WhoisResultProps) {
                </div>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
       </div>
       
       {/* Contact Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-         <ContactCard title="注册人" contact={normalized.registrant} alwaysShow />
-         <ContactCard title="管理员" contact={normalized.admin} alwaysShow />
-         <ContactCard title="技术联系" contact={normalized.tech} alwaysShow />
-         <ContactCard title="账单联系" contact={normalized.billing} />
+         <ContactCard title={isNetwork ? '资源持有人' : '注册人'} contact={normalized.registrant} alwaysShow={!isNetwork} />
+         <ContactCard title="管理员" contact={normalized.admin} alwaysShow={!isNetwork} />
+         <ContactCard title="技术联系" contact={normalized.tech} alwaysShow={!isNetwork} />
+         {isNetwork ? <ContactCard title="滥用投诉" contact={{ email: parsed?.abuse_email, phone: parsed?.abuse_phone }} /> : <ContactCard title="账单联系" contact={normalized.billing} />}
       </div>
 
       {/* Every parsed field is retained here, including registry-specific WHOIS fields. */}

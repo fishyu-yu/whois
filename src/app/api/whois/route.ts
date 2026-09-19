@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-import { isIP } from 'node:net'
 import { domainToASCII } from 'node:url'
 import { validateDomain } from '@/lib/domain-utils'
 import { queryDomainRDAP } from '@/lib/rdap-client'
 import { parseRDAPResponse, rdapToWhoisText } from '@/lib/rdap-parser'
 import { queryDomainWhois } from '@/lib/whois-client'
-import { parseWhoisResult } from '@/lib/whois-parser'
+import { detectQueryType, normalizeASN, normalizeIP } from '@/lib/query-utils'
+import { queryNetworkRDAP, queryNetworkWhois } from '@/lib/network-client'
+import { NetworkQueryError } from '@/lib/network-parser'
 
 export const runtime = 'nodejs'
 
-const execFileAsync = promisify(execFile)
 const cache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000
 const SOURCES = ['auto', 'rdap', 'whois', 'registrar', 'registry'] as const
@@ -27,7 +25,7 @@ function normalizeRequest(body: unknown) {
   if (typeof query !== 'string' || !query.trim()) throw new QueryError('查询内容不能为空', 400)
   let normalized = query.trim()
   const type = !requestedType || requestedType === 'auto'
-    ? (isIP(normalized.split('/')[0]) ? 'ip' : /^(AS)?\d+$/i.test(normalized) ? 'asn' : 'domain')
+    ? detectQueryType(normalized)
     : requestedType
   if (typeof dataSource !== 'string' || !SOURCES.includes(dataSource as DataSource)) {
     throw new QueryError('不支持的数据源', 400)
@@ -40,19 +38,21 @@ function normalizeRequest(body: unknown) {
       throw new QueryError('无效的国际化域名', 400)
     }
   } else if (type === 'ip') {
-    const [address, prefix, ...extra] = normalized.split('/')
-    const family = isIP(address)
-    if (!family || extra.length || (prefix !== undefined && (!/^\d+$/.test(prefix) || Number(prefix) > (family === 4 ? 32 : 128)))) {
+    const ip = normalizeIP(normalized)
+    if (!ip) {
       throw new QueryError('无效的 IP 地址或 CIDR 网段', 400)
     }
+    normalized = ip
   } else if (type === 'asn') {
-    if (!/^(AS)?\d{1,10}$/i.test(normalized) || Number(normalized.replace(/^AS/i, '')) > 4294967295) {
+    const asn = normalizeASN(normalized)
+    if (!asn) {
       throw new QueryError('无效的 ASN', 400)
     }
-    normalized = `AS${normalized.replace(/^AS/i, '')}`
+    normalized = asn
   } else {
     throw new QueryError('不支持的查询类型', 400)
   }
+  if (type !== 'domain' && dataSource === 'registrar') throw new QueryError('IP/ASN 没有域名注册商数据源，请使用自动、RDAP 或 WHOIS', 400)
   return { query: normalized, type, dataSource: dataSource as DataSource }
 }
 
@@ -87,16 +87,15 @@ async function performQuery(query: string, type: string, dataSource: DataSource)
     // All domain WHOIS paths use Node TCP, including explicit WHOIS and GET.
     if (!result) result = await queryDomainWhois(query, dataSource === 'registry' ? 'registry' : 'registrar')
   } else {
-    try {
-      const { stdout } = await execFileAsync('whois', [query], { timeout: 30000, maxBuffer: 1024 * 1024 })
-      if (!stdout.trim()) throw new Error('WHOIS 服务返回空响应')
-      result = { query, type, raw: stdout, parsed: parseWhoisResult(stdout), timestamp: new Date().toISOString(), dataSource: 'standard' }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new QueryError('IP/ASN 查询需要安装系统 whois 工具；域名查询无需安装。', 503)
+    const networkType = type as 'ip' | 'asn'
+    if (dataSource === 'auto' || dataSource === 'rdap') {
+      try { result = await queryNetworkRDAP(query, networkType) } catch (error) {
+        // Some RIR RDAP services intermittently return 404 for allocated
+        // resources. In auto mode, confirm through WHOIS before reporting it.
+        if (dataSource === 'rdap') throw error
       }
-      throw error
     }
+    if (!result) result = await queryNetworkWhois(query, networkType)
   }
   // Bound memory and never cache failures or empty responses.
   if (cache.size >= 500) cache.delete(cache.keys().next().value!)
@@ -115,7 +114,7 @@ async function handleQuery(body: unknown) {
     return NextResponse.json({ query, type, success: true, data, error: null, timestamp: Date.now() })
   } catch (error) {
     const message = error instanceof Error ? error.message : '查询失败，请稍后重试'
-    const status = error instanceof QueryError ? error.status
+    const status = error instanceof QueryError || error instanceof NetworkQueryError ? error.status
       : message.includes('未注册') ? 404 : message.includes('暂不支持') ? 400 : 502
     return NextResponse.json({ query, type, success: false, error: message, data: null, timestamp: Date.now() }, { status })
   }
