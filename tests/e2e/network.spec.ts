@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { detectQueryType, normalizeASN, normalizeIP } from '../../src/lib/query-utils'
+import { normalizeQueryInput, queryPath } from '../../src/lib/query-path'
 
 const ip6 = '2001:4860:4860:1234:5678:90ab:cdef:1234'
 
@@ -15,9 +16,9 @@ async function noOverflow(page: Page) {
 async function submit(page: Page, query: string) {
   await page.getByRole('textbox', { name: '域名、IP 或 ASN' }).fill(query)
   await page.getByRole('button', { name: '开始查询', exact: true }).click()
-  const type = detectQueryType(query)
-  const title = type === 'ip' ? normalizeIP(query) : type === 'asn' ? normalizeASN(query.trim()) : query
+  const title = normalizeQueryInput(query)
   await expect(page.getByRole('heading', { name: title!, exact: true })).toBeVisible()
+  await expect(page).toHaveURL(url => url.pathname === queryPath(query))
 }
 
 test.beforeEach(async ({ page }) => {
@@ -152,6 +153,93 @@ test('home navigation restores results and theme switching preserves the query',
     await page.getByRole('menuitem', { name: label, exact: true }).click()
     await expect(page.locator('html')).toHaveClass(new RegExp(theme))
     await expect(page.getByRole('heading', { name: '8.8.8.8', exact: true })).toBeVisible()
+    await noOverflow(page)
+  }
+})
+
+test('direct paths and legacy links normalize once, refresh and preserve forward history', async ({ page }) => {
+  const requests: string[] = []
+  page.on('request', request => {
+    if (request.url().endsWith('/api/whois')) requests.push(request.postDataJSON().query)
+  })
+  for (const path of ['/Example.COM', '/15169', '/8.8.8.8', '/2001:4860::8888', '/8.8.8.9/24', '/2001%3A4860%3A%3A%2F32', '/中国.cn']) {
+    const query = normalizeQueryInput(decodeURIComponent(path.slice(1)))
+    const count = requests.length
+    await page.goto(path)
+    await expect(page.getByRole('heading', { name: query, exact: true })).toBeVisible()
+    await expect(page).toHaveURL(url => url.pathname === queryPath(query))
+    await page.reload()
+    await expect(page.getByRole('heading', { name: query, exact: true })).toBeVisible()
+    expect(requests.slice(count)).toEqual([query, query])
+  }
+  await page.goto('/')
+  await submit(page, '/Example.COM')
+  await submit(page, '0015169')
+  await submit(page, '/8.8.8.9/24')
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: 'AS15169', exact: true })).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: 'example.com', exact: true })).toBeVisible()
+  await page.goForward()
+  await expect(page.getByRole('heading', { name: 'AS15169', exact: true })).toBeVisible()
+  await page.goForward()
+  await expect(page.getByRole('heading', { name: '8.8.8.0/24', exact: true })).toBeVisible()
+})
+
+test('image generation failure displays an error and allows retry', async ({ page }) => {
+  await page.goto('/AS15169')
+  await expect(page.getByRole('heading', { name: 'AS15169', exact: true })).toBeVisible()
+  await page.evaluate(() => {
+    const original = HTMLCanvasElement.prototype.toBlob
+    HTMLCanvasElement.prototype.toBlob = function (callback) {
+      HTMLCanvasElement.prototype.toBlob = original
+      callback(null)
+    }
+  })
+  await page.getByRole('button', { name: '导出图片', exact: true }).click()
+  await expect(page.locator('.result-flow').getByRole('alert')).toHaveText('图片生成失败，请重试。')
+  const downloadEvent = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出图片', exact: true }).click()
+  expect((await downloadEvent).suggestedFilename()).toBe('whois-AS15169.png')
+  await expect(page.locator('.result-flow').getByRole('alert')).toHaveCount(0)
+})
+
+test('PNG exports render complete domain, IP and ASN results in the current theme', async ({ page }, testInfo) => {
+  await page.goto('/')
+  for (const query of ['example.com', '2001:4860::/32', 'AS15169']) {
+    await submit(page, query)
+    await page.getByRole('button', { name: '原始查询数据' }).click()
+    const downloadEvent = page.waitForEvent('download')
+    await page.getByRole('button', { name: '导出图片', exact: true }).click()
+    const download = await downloadEvent
+    expect(download.suggestedFilename()).toBe(`whois-${query.replace(/[:/]/g, '_')}.png`)
+    await download.saveAs(testInfo.outputPath(download.suggestedFilename()))
+    const stream = await download.createReadStream()
+    const buffers: Buffer[] = []
+    for await (const chunk of stream!) buffers.push(Buffer.from(chunk))
+    const png = Buffer.concat(buffers)
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+    const pixels = await page.evaluate(async base64 => {
+      const img = new Image()
+      img.src = `data:image/png;base64,${base64}`
+      await img.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0)
+      const rgba = ctx.getImageData(0, 0, img.width, img.height).data
+      const colors = new Set<string>()
+      for (let i = 0; i < rgba.length; i += 400) colors.add(`${rgba[i]},${rgba[i + 1]},${rgba[i + 2]}`)
+      return { width: img.width, height: img.height, colors: colors.size, corner: Array.from(rgba.slice(0, 4)) }
+    }, png.toString('base64'))
+    expect(pixels.width).toBeGreaterThan(500)
+    expect(pixels.height).toBeGreaterThan(1000)
+    expect(pixels.colors).toBeGreaterThan(20)
+    expect(pixels.corner[3]).toBe(255)
+    expect(pixels.corner[0] > 128).toBe(testInfo.project.use.colorScheme === 'light')
+    await expect(page.getByRole('button', { name: '导出图片', exact: true })).toBeEnabled()
+    await expect(page.locator('pre')).toBeVisible()
     await noOverflow(page)
   }
 })

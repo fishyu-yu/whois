@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { detectQueryType } from "@/lib/query-utils"
+import { normalizeQueryInput } from "@/lib/query-path"
 export { detectQueryType } from "@/lib/query-utils"
 
 interface WhoisFormProps {
@@ -24,7 +25,7 @@ interface WhoisFormProps {
 
 export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
   const [query, setQuery] = useState(defaultValue || "")
-  const detectedType = detectQueryType(query)
+  const detectedType = detectQueryType(normalizeQueryInput(query))
   const validation = query.trim() ? {
     isValid: detectedType !== 'unknown', type: detectedType,
     message: detectedType === 'unknown' ? '请输入有效的域名、IP / CIDR 或 ASN（1–4294967295）' : undefined,
@@ -44,14 +45,15 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
     e.preventDefault()
     if (loading || !query.trim() || (validation && !validation.isValid)) return
 
-    const autoDetected = detectQueryType(query.trim())
+    const normalizedQuery = normalizeQueryInput(query)
+    const autoDetected = detectQueryType(normalizedQuery)
     const detectedType = autoDetected
 
     if (detectedType === "unknown") {
       return
     }
 
-    onSubmit(query.trim(), detectedType, "auto")
+    onSubmit(normalizedQuery, detectedType, "auto")
   }
 
   const getIcon = () => {

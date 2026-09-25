@@ -8,14 +8,14 @@
  */
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Copy, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink } from "lucide-react"
+import { Copy, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink, ImageDown, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { csvContent, exportBasename } from "@/lib/export-utils"
+import { csvContent, downloadBlob, exportBasename, exportResultImage } from "@/lib/export-utils"
 
 // RDAP/EPP 域名状态字典
 const STATUS_INFO: Record<string, { label: string; severity: number; description?: string }> = {
@@ -57,8 +57,6 @@ const STATUS_INFO_CANONICAL: Record<string, { label: string; severity: number; d
 
 interface WhoisResultProps {
   data: any
-  onExport?: () => void
-  onShare?: () => void
 }
 
 const getStatusInfo = (code: string) => {
@@ -109,6 +107,10 @@ export function WhoisResult({ data }: WhoisResultProps) {
   const [showRaw, setShowRaw] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
+  const [exportingImage, setExportingImage] = useState(false)
+  const [exportError, setExportError] = useState('')
+  const resultRef = useRef<HTMLDivElement>(null)
+  const exportInProgress = useRef(false)
 
   if (!data || !data.result) return null
 
@@ -336,15 +338,22 @@ export function WhoisResult({ data }: WhoisResultProps) {
           filename += ".csv"
       }
 
-      const blob = new Blob([content], { type })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      downloadBlob(new Blob([content], { type }), filename)
+  }
+
+  const handleImageExport = async () => {
+    if (!resultRef.current || exportInProgress.current) return
+    exportInProgress.current = true
+    setExportingImage(true)
+    setExportError('')
+    try {
+      await exportResultImage(resultRef.current, queryTitle || normalized.domain || data.query || 'query')
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : '图片导出失败，请重试。')
+    } finally {
+      exportInProgress.current = false
+      setExportingImage(false)
+    }
   }
 
   const ContactCard = ({ title, contact, alwaysShow = false }: { title: string, contact: any, alwaysShow?: boolean }) => {
@@ -431,7 +440,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
   }
 
   return (
-    <div className="result-flow mx-auto w-full max-w-5xl space-y-4 pb-12">
+    <div ref={resultRef} className="result-flow mx-auto w-full max-w-5xl space-y-4 pb-12">
       
       {/* Header Section */}
       <div className="quiet-surface flex flex-col justify-between gap-5 rounded-lg p-5 md:flex-row md:items-end sm:p-6">
@@ -465,7 +474,11 @@ export function WhoisResult({ data }: WhoisResultProps) {
           </div>
         </div>
         
-        <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
+        <div data-export-ignore className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
+           <Button variant="outline" size="sm" onClick={handleImageExport} disabled={exportingImage}>
+             {exportingImage ? <Loader2 className="size-4 animate-spin" /> : <ImageDown className="size-4" />}
+             {exportingImage ? '正在生成图片' : '导出图片'}
+           </Button>
            <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
              <Download className="w-4 h-4" />
              JSON
@@ -480,6 +493,8 @@ export function WhoisResult({ data }: WhoisResultProps) {
            </Button>
         </div>
       </div>
+
+      {exportError && <p data-export-ignore role="alert" className="text-sm text-destructive">{exportError}</p>}
 
       {/* Main Info Grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -651,7 +666,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
       )}
 
       {/* Raw Data Toggle */}
-      <div className="quiet-surface overflow-hidden rounded-lg">
+      <div data-export-ignore className="quiet-surface overflow-hidden rounded-lg">
         <button 
           onClick={() => setShowRaw(!showRaw)}
           className="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted/60"
@@ -672,6 +687,10 @@ export function WhoisResult({ data }: WhoisResultProps) {
           </div>
         )}
       </div>
+
+      <p className="break-all text-xs leading-5 text-muted-foreground">
+        Whois 查询 · {data.query} · 查询时间：{formatDate(data.timestamp)}
+      </p>
 
     </div>
   )

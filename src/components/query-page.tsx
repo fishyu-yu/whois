@@ -9,6 +9,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { usePathname } from "next/navigation"
 import { WhoisForm } from "@/components/whois-form"
 import { WhoisResult } from "@/components/whois-result"
 import { LayoutWrapper } from "@/components/layout-wrapper"
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { History, X, Clock, ArrowUpRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { detectQueryType } from "@/lib/query-utils"
+import { normalizeQueryInput, queryFromPath, queryPath } from "@/lib/query-path"
 
 interface WhoisData {
   query: string
@@ -33,7 +35,8 @@ interface HistoryItem {
 
 const HISTORY_STORAGE_KEY = "whois_history"
 
-export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
+export function QueryPage() {
+  const pathname = usePathname()
   const [currentResult, setCurrentResult] = useState<WhoisData | null>(null)
   const [loading, setLoading] = useState(false)
   const [activeQuery, setActiveQuery] = useState("")
@@ -45,12 +48,11 @@ export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
   const isCompact = loading || Boolean(currentResult)
 
   // 在地址栏中更新路径但不触发页面导航
-  const updateURLPath = (q: string) => {
-    try {
-      const seg = encodeURIComponent((q || "").trim())
-      if (!seg) return
-      if (window.location.pathname !== `/${seg}`) window.history.pushState(null, "", `/${seg}`)
-    } catch {}
+  const updateURLPath = (q: string, mode: 'push' | 'replace') => {
+    const path = queryPath(q)
+    if (window.location.pathname !== path) {
+      window.history[mode === 'push' ? 'pushState' : 'replaceState'](null, "", path)
+    }
   }
 
   useEffect(() => {
@@ -63,7 +65,8 @@ export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
     } catch {}
   }, [])
 
-  const handleQuery = useCallback(async (query: string, type: string, dataSource = "auto") => {
+  const handleQuery = useCallback(async (input: string, type: string, dataSource = "auto", mode: 'push' | 'replace' = 'push') => {
+    const query = normalizeQueryInput(input)
     const id = ++requestId.current
     handledQuery.current = query
     const addHistory = (item: HistoryItem) => setHistory(previous => {
@@ -71,7 +74,7 @@ export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
       try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list)) } catch {}
       return list
     })
-    updateURLPath(query)
+    updateURLPath(query, mode)
     setActiveQuery(query)
     setLoading(true)
 
@@ -108,7 +111,7 @@ export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
       const canonicalQuery = result.query || query
       handledQuery.current = canonicalQuery
       setActiveQuery(canonicalQuery)
-      updateURLPath(canonicalQuery)
+      updateURLPath(canonicalQuery, 'replace')
 
       const newData: WhoisData = {
         query: canonicalQuery,
@@ -135,28 +138,17 @@ export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
   }, [])
 
   useEffect(() => {
-    if (initialQuery && initialQuery !== handledQuery.current) {
-      void handleQuery(initialQuery, detectQueryType(initialQuery))
+    const query = normalizeQueryInput(queryFromPath(pathname))
+    if (query) {
+      if (query !== handledQuery.current) void handleQuery(query, detectQueryType(query), 'auto', 'replace')
+    } else {
+      requestId.current++
+      handledQuery.current = ''
+      setActiveQuery('')
+      setCurrentResult(null)
+      setLoading(false)
     }
-  }, [initialQuery, handleQuery])
-
-  useEffect(() => {
-    const restoreQuery = () => {
-      let query = ''
-      try { query = decodeURIComponent(window.location.pathname.slice(1)) } catch { return }
-      if (query) {
-        if (query !== handledQuery.current) void handleQuery(query, detectQueryType(query))
-      } else {
-        requestId.current++
-        handledQuery.current = ''
-        setActiveQuery('')
-        setCurrentResult(null)
-        setLoading(false)
-      }
-    }
-    window.addEventListener('popstate', restoreQuery)
-    return () => window.removeEventListener('popstate', restoreQuery)
-  }, [handleQuery])
+  }, [pathname, handleQuery])
 
   return (
     <LayoutWrapper>
@@ -193,7 +185,7 @@ export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
             "search-dock w-full",
             isCompact ? "max-w-4xl" : "max-w-4xl"
           )}>
-            <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={activeQuery || initialQuery} />
+            <WhoisForm onSubmit={handleQuery} loading={loading} defaultValue={activeQuery} />
           </div>
 
           <div
@@ -255,8 +247,6 @@ export function QueryPage({ initialQuery = '' }: { initialQuery?: string }) {
               <WhoisResult
                 key={`${currentResult.query}-${currentResult.timestamp}`}
                 data={currentResult}
-                onExport={() => {}}
-                onShare={() => {}}
               />
           )}
         </section>
