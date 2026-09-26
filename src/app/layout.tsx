@@ -31,7 +31,7 @@ export const metadata: Metadata = {
       { url: "/icon-512.svg", sizes: "512x512", type: "image/svg+xml" }
     ],
     apple: [
-      { url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" }
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }
     ]
   },
 };
@@ -45,11 +45,11 @@ export default function RootLayout({
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0A84FF" />
+        <meta name="theme-color" content="#102C49" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Whois查询" />
-        <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

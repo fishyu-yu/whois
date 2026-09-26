@@ -1,26 +1,29 @@
 {
-  "name": "Whois查询工具",
-  "short_name": "Whois",
+  "name": "Whale Whois · 域名与网络查询",
+  "short_name": "Whale Whois",
   "description": "专业的Whois域名查询工具，支持域名、IP地址、ASN等多种查询类型",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#102C49",
   "orientation": "portrait-primary",
-  "categories": ["utilities", "productivity"],
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
   "lang": "zh-CN",
   "icons": [
     {
-      "src": "/icon-192.svg",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "maskable any"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icon-512.svg",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable any"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

@@ -1,9 +1,11 @@
-const CACHE_NAME = 'whois-tool-v2';
+const CACHE_NAME = 'whois-tool-v3-brand';
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/icon-192.svg',
-  '/icon-512.svg',
+  '/logo.svg',
+  '/apple-touch-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 // 安装事件
@@ -114,8 +116,8 @@ function doBackgroundSync() {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'Whois查询工具通知',
-    icon: '/icon-192.svg',
-    badge: '/icon-192.svg',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -125,12 +127,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: '查看详情',
-        icon: '/icon-192.svg'
+        icon: '/icon-192.png'
       },
       {
         action: 'close',
         title: '关闭',
-        icon: '/icon-192.svg'
+        icon: '/icon-192.png'
       }
     ]
   };

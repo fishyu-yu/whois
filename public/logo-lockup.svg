@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="240" viewBox="0 0 880 240"><rect width="880" height="240" rx="24" fill="#F2F6FA"/><defs><linearGradient id="ocean" x1="28" y1="36" x2="101" y2="95" gradientUnits="userSpaceOnUse"><stop stop-color="#5AE1EA"/><stop offset="1" stop-color="#259CD9"/></linearGradient></defs><g transform="translate(56 56)"><rect width="128" height="128" rx="32" fill="#102C49"/>
+<path d="M24 66C24 48 37 36 55 36C74 36 85 49 85 64V69C96 68 99 59 99 47C109 50 112 60 106 69C105 85 88 95 64 95C40 95 24 85 24 66Z" fill="url(#ocean)"/>
+<path d="M29 79C39 84 54 86 68 83C82 80 93 80 101 77C94 89 81 95 64 95C48 95 36 89 29 79Z" fill="#BDF4F5"/>
+<circle cx="54" cy="60" r="12" fill="#102C49"/>
+<circle cx="54" cy="60" r="6" fill="#F2FFFF"/>
+<path d="M63 69L72 78" stroke="#102C49" stroke-width="7" stroke-linecap="round"/></g><text x="218" y="118" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="52" font-weight="700" letter-spacing="-2" fill="#102C49">Whale Whois</text><text x="220" y="158" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" letter-spacing="3" fill="#526A80">DOMAINS. NETWORKS. DISCOVERED.</text></svg>

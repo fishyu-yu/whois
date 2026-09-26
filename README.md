@@ -1,4 +1,6 @@
-# WHOIS · 域名与网络注册信息查询
+# Whale Whois · 域名与网络注册信息查询
+
+![Whale Whois — 域名与网络信息查询](public/logo-lockup.svg)
 
 一个可自行部署的 WHOIS / RDAP 查询工具。输入域名、IP、CIDR 或 ASN，
 即可查看注册信息、数据来源和原始响应，并导出查询结果。

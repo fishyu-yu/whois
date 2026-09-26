@@ -2,8 +2,9 @@
 
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Github, ArrowLeft, History, Search } from "lucide-react"
+import { Github, ArrowLeft, History } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 interface HeaderProps {
@@ -34,9 +35,7 @@ export function Header({
           )}
           
           <Link href="/" className="group flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-foreground text-background transition-transform duration-300 group-hover:scale-[1.03]">
-              <Search className="size-4" />
-            </div>
+            <Image src="/logo.svg" alt="" width={32} height={32} className="shrink-0 transition-transform duration-300 group-hover:scale-[1.05]" />
             <span className="text-sm font-semibold">Whale Whois</span>
           </Link>
         </div>
