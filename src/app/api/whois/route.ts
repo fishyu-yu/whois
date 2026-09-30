@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { domainToASCII } from 'node:url'
-import { validateDomain } from '@/lib/domain-utils'
+import { getRootDomain, validateDomain } from '@/lib/domain-utils'
 import { queryDomainRDAP } from '@/lib/rdap-client'
 import { parseRDAPResponse, rdapToWhoisText } from '@/lib/rdap-parser'
 import { queryDomainWhois } from '@/lib/whois-client'
@@ -37,6 +37,7 @@ function normalizeRequest(body: unknown) {
     if (!normalized || !validateDomain(normalized).isValid || !/^[a-z0-9.-]+$/.test(normalized)) {
       throw new QueryError('无效的国际化域名', 400)
     }
+    normalized = getRootDomain(normalized)
   } else if (type === 'ip') {
     const ip = normalizeIP(normalized)
     if (!ip) {

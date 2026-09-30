@@ -46,6 +46,42 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
+test('subdomain hints, requests, share links and history use the registry domain', async ({ page }) => {
+  const queries: string[] = []
+  page.on('request', request => {
+    if (request.url().endsWith('/api/whois')) queries.push(request.postDataJSON().query)
+  })
+  await page.goto('/')
+  for (const [input, expected, hasHint] of [
+    ['www.qq.com', 'qq.com', true],
+    ['xx.edu.kg', 'xx.edu.kg', false],
+    ['www.xx.edu.kg', 'xx.edu.kg', true],
+    ['www.co.uk', 'www.co.uk', false],
+    ['www.中国.cn', 'xn--fiqs8s.cn', true],
+  ] as const) {
+    await page.getByRole('textbox', { name: '域名、IP 或 ASN' }).fill(input)
+    if (hasHint) await expect(page.locator('#query-domain-hint')).toContainText(expected)
+    else await expect(page.locator('#query-domain-hint')).toHaveCount(0)
+    await page.getByRole('button', { name: '开始查询', exact: true }).click()
+    await expect(page.getByRole('heading', { name: expected, exact: true })).toBeVisible()
+    await expect(page).toHaveURL(url => url.pathname === `/${expected}`)
+    expect(queries.at(-1)).toBe(expected)
+    await noOverflow(page)
+  }
+  await page.goto('/www.qq.com')
+  await expect(page.getByRole('heading', { name: 'qq.com', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/\/qq.com$/)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'qq.com', exact: true })).toBeVisible()
+  const history: { query: string }[] = await page.evaluate(() => JSON.parse(localStorage.getItem('whois_history') || '[]'))
+  expect(history.filter(item => item.query === 'qq.com')).toHaveLength(1)
+  expect(history.some(item => item.query.startsWith('www.qq.'))).toBe(false)
+  for (const input of ['edu.kg', 'co.uk', '-bad.qq.com']) {
+    await page.getByRole('textbox', { name: '域名、IP 或 ASN' }).fill(input)
+    await expect(page.getByRole('button', { name: '开始查询', exact: true })).toBeDisabled()
+  }
+})
+
 test('domain, IPv4, IPv6, CIDR and ASN share card geometry and typography without irrelevant fields', async ({ page }, testInfo) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))

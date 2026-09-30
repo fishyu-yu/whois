@@ -124,3 +124,68 @@ test('TCP rejects empty and oversized responses and times out stalled peers', as
   respond = () => {}
   await assert.rejects(tcpWhoisQuery('127.0.0.1', 'timeout.cn', port, 50), /超时/)
 })
+
+test('GET and POST normalize hostnames before all WHOIS source modes and caching', async () => {
+  respond = (socket, query, server) => socket.end(server === 'whois.iana.org'
+    ? 'whois: whois.example.test\n' : `Domain Name: ${query}\n`)
+  for (const source of ['whois', 'registrar', 'registry']) {
+    for (const [input, expected] of [
+      ['www.qq.com', 'qq.com'], ['www.xx.edu.kg', 'xx.edu.kg'],
+      ['xx.edu.kg', 'xx.edu.kg'], ['www.bbc.co.uk', 'bbc.co.uk'],
+      ['www.中国.cn', 'xn--fiqs8s.cn'], ['a.b.unknownsuffix', 'a.b.unknownsuffix'],
+    ]) {
+      for (const response of [await post(input, source), await GET(new NextRequest(
+        `http://localhost/api/whois?q=${encodeURIComponent(input)}&dataSource=${source}`
+      ))]) {
+        const body = await response.json()
+        assert.equal(response.status, 200, JSON.stringify(body))
+        assert.equal(body.query, expected)
+        assert.equal(body.data.query, expected)
+        assert.equal(body.data.parsed.domain_name, expected)
+      }
+    }
+  }
+  assert.ok(requests.some(request => request.query === 'xx.edu.kg'))
+  assert.equal(requests.some(request => request.query === 'www.qq.com' || request.query === 'edu.kg'), false)
+  const count = requests.length
+  await post('mail.qq.com', 'whois')
+  await post('qq.com', 'whois')
+  assert.equal(requests.length, count, 'root and subdomain queries share the cache')
+})
+
+test('automatic and forced RDAP query the registry domain before an authoritative 404', async () => {
+  const urls: string[] = []
+  const fetchMock = mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+    const url = String(input)
+    urls.push(url)
+    if (url.includes('data.iana.org')) return Response.json({ services: [] })
+    if (url.endsWith('/domain/missing-normalized.com')) return Response.json({ errorCode: 404 }, { status: 404 })
+    if (url.endsWith('/domain/qq.com')) return Response.json({ objectClassName: 'domain', ldhName: 'qq.com' })
+    return Response.json({ errorCode: 404 }, { status: 404 })
+  })
+  try {
+    for (const source of ['auto', 'rdap']) {
+      const response = await post('www.qq.com', source, 'auto')
+      const body = await response.json()
+      assert.equal(response.status, 200, JSON.stringify(body))
+      assert.equal(body.query, 'qq.com')
+      assert.equal(body.data.parsed.domain_name.toLowerCase(), 'qq.com')
+      const missing = await post('www.missing-normalized.com', source)
+      assert.equal(missing.status, 404)
+      assert.equal((await missing.json()).query, 'missing-normalized.com')
+    }
+    assert.ok(urls.some(url => url.endsWith('/domain/qq.com')))
+    assert.equal(urls.some(url => url.includes('/domain/www.')), false)
+  } finally {
+    fetchMock.mock.restore()
+  }
+})
+
+test('bare public suffixes and invalid subdomain labels are rejected without upstream requests', async () => {
+  const count = requests.length
+  for (const input of ['edu.kg', 'co.uk', 'b.ck', '-bad.qq.com', `${'中'.repeat(60)}.qq.com`]) {
+    assert.equal((await post(input, 'whois')).status, 400, input)
+    assert.equal((await GET(new NextRequest(`http://localhost/api/whois?q=${encodeURIComponent(input)}`))).status, 400, input)
+  }
+  assert.equal(requests.length, count)
+})

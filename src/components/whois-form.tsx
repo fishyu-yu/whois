@@ -15,6 +15,7 @@ import { Search, Loader2, Globe, Server, Network, AlertCircle, ArrowRight } from
 import { cn } from "@/lib/utils"
 import { detectQueryType } from "@/lib/query-utils"
 import { normalizeQueryInput } from "@/lib/query-path"
+import { validateDomain } from "@/lib/domain-utils"
 export { detectQueryType } from "@/lib/query-utils"
 
 interface WhoisFormProps {
@@ -25,7 +26,10 @@ interface WhoisFormProps {
 
 export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
   const [query, setQuery] = useState(defaultValue || "")
-  const detectedType = detectQueryType(normalizeQueryInput(query))
+  const normalizedQuery = normalizeQueryInput(query)
+  const detectedType = detectQueryType(normalizedQuery)
+  const domainValidation = detectedType === 'domain' ? validateDomain(query.trim().replace(/^\//, '')) : null
+  const isNormalizedSubdomain = domainValidation?.type === 'subdomain'
   const validation = query.trim() ? {
     isValid: detectedType !== 'unknown', type: detectedType,
     message: detectedType === 'unknown' ? '请输入有效的域名、IP / CIDR 或 ASN（1–4294967295）' : undefined,
@@ -86,7 +90,7 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
             ref={inputRef}
             type="text"
             aria-invalid={validation?.isValid === false}
-            aria-describedby={validation?.isValid === false ? "query-error" : undefined}
+            aria-describedby={validation?.isValid === false ? "query-error" : isNormalizedSubdomain ? "query-domain-hint" : undefined}
             className="relative z-10 h-14 min-w-0 flex-1 border-none bg-transparent px-2 text-base font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/70 sm:px-3 sm:text-lg"
             placeholder="输入域名、IP 地址或 ASN"
             value={query}
@@ -125,6 +129,11 @@ export function WhoisForm({ onSubmit, loading, defaultValue }: WhoisFormProps) {
           <AlertCircle className="size-3.5" />
           <span id="query-error" role="alert">{validation?.message}</span>
         </div>
+        {isNormalizedSubdomain && (
+          <p id="query-domain-hint" className="mt-3 text-center text-xs text-muted-foreground" aria-live="polite">
+            将查询注册域名 <span className="font-mono font-medium text-foreground">{normalizedQuery}</span>（已自动移除子域名）
+          </p>
+        )}
       </form>
 
       <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-xs text-muted-foreground">

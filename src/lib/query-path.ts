@@ -1,4 +1,4 @@
-import { validateDomain } from './domain-utils'
+import { getRootDomain } from './domain-utils'
 import { detectQueryType, normalizeASN, normalizeIP } from './query-utils'
 
 /** Accept a query or a root-relative query path in the search field. */
@@ -7,7 +7,7 @@ export function normalizeQueryInput(input: string): string {
   switch (detectQueryType(value)) {
     case 'ip': return normalizeIP(value)!
     case 'asn': return normalizeASN(value)!
-    case 'domain': return validateDomain(value).punycode || value.toLowerCase()
+    case 'domain': return getRootDomain(value)
     default: return value
   }
 }

@@ -8,6 +8,7 @@
  */
 
 import { getCCTLDInfo, isCCTLD } from './cctld-database';
+import { parse } from 'tldts';
 
 
 // 移除对 punycode 的静态依赖，避免在客户端打包时出现模块工厂不可用的问题
@@ -35,6 +36,8 @@ export interface DomainValidationResult {
   unicode?: string;
   country?: string;
   registry?: string;
+  publicSuffix?: string;
+  registrableDomain?: string;
   errors: string[];
 }
 
@@ -158,13 +161,30 @@ export function validateDomain(domain: string): DomainValidationResult {
     }
   }
 
-  // 确定域名类型
-  if (parts.length === 2) {
-    result.type = 'domain';
-  } else if (parts.length > 2) {
-    result.type = 'subdomain';
+  // Validate the complete ASCII hostname before removing any subdomain, so
+  // invalid labels cannot disappear during normalization (including IDNs).
+  const hostname = result.punycode || trimmedDomain;
+  if (!/^[a-z0-9.-]+$/.test(hostname) || hostname.length > 253 || hostname.split('.').some(
+    label => !label || label.length > 63 || label.startsWith('-') || label.endsWith('-')
+  )) {
+    result.errors.push('无效的域名或国际化域名');
+    return result;
   }
 
+  // WHOIS/RDAP describe registry registrations. Private hosting suffixes such
+  // as github.io do not create a separate registration at the .io registry.
+  const parsed = parse(hostname, { allowPrivateDomains: false, extractHostname: false });
+  if (parsed.isIcann) {
+    result.publicSuffix = parsed.publicSuffix || undefined;
+    if (!parsed.domain) {
+      result.errors.push('请输入可注册域名，不能仅查询公共后缀');
+      return result;
+    }
+    result.registrableDomain = parsed.domain;
+  }
+  // Unknown suffixes remain intact: guessing the last two labels could drop
+  // part of a newly introduced or locally managed registration suffix.
+  result.type = result.registrableDomain && result.registrableDomain !== hostname ? 'subdomain' : 'domain';
   result.isValid = result.errors.length === 0;
   
   return result;
@@ -195,24 +215,21 @@ export function extractSLD(domain: string): string {
 /**
  * 获取域名的根域名（去除子域名部分）
  * @param {string} domain 域名
- * @returns {string} 根域名（例如 a.b.example.com -> example.com）
+ * @returns {string} 根据公共后缀识别的可注册域名；未知后缀保留完整域名，非法输入返回空字符串
  */
 export function getRootDomain(domain: string): string {
-  if (!domain) return '';
-  const parts = domain.toLowerCase().split('.');
-  if (parts.length < 2) return domain;
-  return parts.slice(-2).join('.');
+  const validation = validateDomain(domain);
+  if (!validation.isValid) return '';
+  return validation.registrableDomain || validation.punycode || domain.trim().toLowerCase();
 }
 
 /**
  * 检查是否为子域名
  * @param {string} domain 域名
- * @returns {boolean} 当段数大于 2 时返回 true
+ * @returns {boolean} 已知公共后缀下，域名包含可注册域名之外的标签时返回 true
  */
 export function isSubdomain(domain: string): boolean {
-  if (!domain) return false;
-  const parts = domain.split('.');
-  return parts.length > 2;
+  return validateDomain(domain).type === 'subdomain';
 }
 
 /**

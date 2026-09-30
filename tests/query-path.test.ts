@@ -12,6 +12,12 @@ test('all query kinds use canonical readable paths and round-trip', () => {
     ['2001:4860:0000:0000::8888', '2001:4860::8888'],
     ['2001:4860::8888/32', '2001:4860::/32'],
     ['中国.cn', 'xn--fiqs8s.cn'],
+    [' /WWW.QQ.COM ', 'qq.com'],
+    ['xx.edu.kg', 'xx.edu.kg'],
+    ['www.xx.edu.kg', 'xx.edu.kg'],
+    ['www.example.co.uk', 'example.co.uk'],
+    ['www.中国.cn', 'xn--fiqs8s.cn'],
+    ['a.b.unknownsuffix', 'a.b.unknownsuffix'],
   ]) {
     assert.equal(normalizeQueryInput(input), expected)
     assert.equal(queryPath(input), `/${expected}`)
