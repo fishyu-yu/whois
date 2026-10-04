@@ -21,6 +21,15 @@ async function submit(page: Page, query: string) {
   await expect(page).toHaveURL(url => url.pathname === queryPath(query))
 }
 
+async function disclosure(page: Page, name: '全部查询字段' | '原始查询数据') {
+  const button = page.getByRole('button', { name, exact: true })
+  const panelId = await button.getAttribute('aria-controls')
+  expect(panelId, `${name} must identify its controlled panel`).toBeTruthy()
+  const panel = page.locator(`[id=${JSON.stringify(panelId)}]`)
+  await expect(panel).toHaveCount(1)
+  return { button, panel }
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/whois', async route => {
     const body = route.request().postDataJSON()
@@ -30,6 +39,7 @@ test.beforeEach(async ({ page }) => {
     const common = {
       creation_date: '2020-01-02T00:00:00Z', updated_date: '2024-01-02T00:00:00Z',
       registrant_name: 'Example, Inc. 网络服务', tech_email: 'network@example.test', abuse_email: 'abuse@example.test',
+      registry_specific_note: `Complete field export for ${query}`,
     }
     const parsed = type === 'domain' ? {
       ...common, domain_name: query, registrar: 'Example Registrar', registry_expiry_date: '2035-01-02T00:00:00Z', name_server: ['ns1.example.test'], domain_status: ['ok'],
@@ -44,6 +54,62 @@ test.beforeEach(async ({ page }) => {
     }
     await route.fulfill({ json: { success: true, query, type, data: { query, type, parsed, raw: JSON.stringify(parsed, null, 2), dataSource: type === 'domain' ? 'rdap-registry' : 'rdap-rir' } } })
   })
+})
+
+test('all fields and raw data start collapsed, toggle independently and support the keyboard', async ({ page }, testInfo) => {
+  await page.goto('/AS15169')
+  await expect(page.getByRole('heading', { name: 'AS15169', exact: true })).toBeVisible()
+  const fields = await disclosure(page, '全部查询字段')
+  const raw = await disclosure(page, '原始查询数据')
+  for (const section of [fields, raw]) {
+    await expect(section.button).toHaveAttribute('aria-expanded', 'false')
+    await expect(section.panel).toBeHidden()
+  }
+  // Collapsing only changes presentation; the complete records stay mounted.
+  await expect(fields.panel).toContainText('registry_specific_note')
+  await expect(fields.panel).toContainText('Complete field export for AS15169')
+  await expect(raw.panel).toContainText('network@example.test')
+  await page.screenshot({ path: testInfo.outputPath('asn-collapsed.png'), fullPage: true, animations: 'disabled' })
+
+  await fields.button.focus()
+  await page.keyboard.press('Enter')
+  await expect(fields.button).toBeFocused()
+  await expect(fields.button).toHaveAttribute('aria-expanded', 'true')
+  await expect(fields.panel).toBeVisible()
+  await expect(raw.panel).toBeHidden()
+  await noOverflow(page)
+
+  await raw.button.focus()
+  await page.keyboard.press('Space')
+  await expect(raw.button).toBeFocused()
+  await expect(raw.button).toHaveAttribute('aria-expanded', 'true')
+  await expect(raw.panel).toBeVisible()
+  await expect(fields.panel).toBeVisible()
+  await fields.button.click()
+  await expect(fields.panel).toBeHidden()
+  await expect(raw.panel).toBeVisible()
+  await raw.button.click()
+  await expect(raw.button).toHaveAttribute('aria-expanded', 'false')
+  await expect(raw.panel).toBeHidden()
+  await noOverflow(page)
+})
+
+test('a new query resets both detail disclosures to the compact view', async ({ page }, testInfo) => {
+  await page.goto('/example.com')
+  await expect(page.getByRole('heading', { name: 'example.com', exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('domain-collapsed.png'), fullPage: true, animations: 'disabled' })
+  for (const name of ['全部查询字段', '原始查询数据'] as const) {
+    const section = await disclosure(page, name)
+    await section.button.click()
+    await expect(section.panel).toBeVisible()
+  }
+  await submit(page, '8.8.8.8')
+  for (const name of ['全部查询字段', '原始查询数据'] as const) {
+    const section = await disclosure(page, name)
+    await expect(section.button).toHaveAttribute('aria-expanded', 'false')
+    await expect(section.panel).toBeHidden()
+    await expect(section.panel).toContainText('8.8.8.8')
+  }
 })
 
 test('subdomain hints, requests, share links and history use the registry domain', async ({ page }) => {
@@ -154,6 +220,10 @@ test('JSON/CSV exports retain network fields and copying returns the raw data', 
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.goto('/')
   await submit(page, 'AS15169')
+  const fields = await disclosure(page, '全部查询字段')
+  const raw = await disclosure(page, '原始查询数据')
+  await expect(fields.panel).toBeHidden()
+  await expect(raw.panel).toBeHidden()
   for (const format of ['JSON', 'CSV']) {
     const downloadEvent = page.waitForEvent('download')
     await page.getByRole('button', { name: format, exact: true }).click()
@@ -165,8 +235,13 @@ test('JSON/CSV exports retain network fields and copying returns the raw data', 
     const content = Buffer.concat(buffers).toString('utf8')
     expect(content).toContain('AS15169')
     expect(content).toContain('Example, Inc.')
+    expect(content).toContain('registry_specific_note')
+    expect(content).toContain('Complete field export for AS15169')
+    expect(content).toContain('network@example.test')
     expect(content).not.toContain('registry_expiry_date')
     if (format === 'JSON') expect(JSON.parse(content).result.parsed.asn).toBe('AS15169')
+    await expect(fields.panel).toBeHidden()
+    await expect(raw.panel).toBeHidden()
   }
   await page.getByRole('button', { name: '复制', exact: true }).click()
   await expect(page.getByRole('button', { name: '已复制', exact: true })).toBeVisible()
@@ -242,9 +317,36 @@ test('image generation failure displays an error and allows retry', async ({ pag
 
 test('PNG exports render complete domain, IP and ASN results in the current theme', async ({ page }, testInfo) => {
   await page.goto('/')
+  await page.evaluate(() => {
+    const observations: { value: string | null; hidden: boolean }[] = []
+    Object.assign(window, { whoisExportObservations: observations })
+    const serialize = XMLSerializer.prototype.serializeToString
+    XMLSerializer.prototype.serializeToString = function (root) {
+      if (root instanceof Element && root.localName === 'svg') {
+        const field = Array.from(root.querySelectorAll('p')).find(node => node.textContent === 'registry_specific_note')
+        const value = field?.nextElementSibling
+        if (value) {
+          let hidden = false
+          for (let node: Element | null = value; node; node = node.parentElement) {
+            const style = (node as HTMLElement).style
+            hidden ||= node.hasAttribute('hidden') || style.display === 'none' || style.visibility === 'hidden'
+          }
+          observations.push({ value: value.textContent, hidden })
+        }
+      }
+      return serialize.call(this, root)
+    }
+  })
   for (const query of ['example.com', '2001:4860::/32', 'AS15169']) {
     await submit(page, query)
+    const fields = await disclosure(page, '全部查询字段')
+    const raw = await disclosure(page, '原始查询数据')
+    await expect(fields.panel).toBeHidden()
     await page.getByRole('button', { name: '原始查询数据' }).click()
+    await expect(raw.panel).toBeVisible()
+    await page.evaluate(() => {
+      (window as unknown as { whoisExportObservations: unknown[] }).whoisExportObservations.length = 0
+    })
     const downloadEvent = page.waitForEvent('download')
     await page.getByRole('button', { name: '导出图片', exact: true }).click()
     const download = await downloadEvent
@@ -274,7 +376,13 @@ test('PNG exports render complete domain, IP and ASN results in the current them
     expect(pixels.colors).toBeGreaterThan(20)
     expect(pixels.corner[3]).toBe(255)
     expect(pixels.corner[0] > 128).toBe(testInfo.project.use.colorScheme === 'light')
+    expect(await page.evaluate(() =>
+      (window as unknown as { whoisExportObservations: unknown[] }).whoisExportObservations
+    )).toContainEqual({ value: `Complete field export for ${query}`, hidden: false })
     await expect(page.getByRole('button', { name: '导出图片', exact: true })).toBeEnabled()
+    await expect(fields.button).toHaveAttribute('aria-expanded', 'false')
+    await expect(fields.panel).toBeHidden()
+    await expect(raw.button).toHaveAttribute('aria-expanded', 'true')
     await expect(page.locator('pre')).toBeVisible()
     await noOverflow(page)
   }

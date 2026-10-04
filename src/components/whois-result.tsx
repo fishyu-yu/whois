@@ -13,9 +13,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Copy, Globe, Server, ChevronDown, ChevronUp, Check, ShieldCheck, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink, ImageDown, Loader2 } from "lucide-react"
+import { Copy, Globe, Server, Check, ShieldCheck, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink, ImageDown, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { csvContent, downloadBlob, exportBasename, exportResultImage } from "@/lib/export-utils"
+import { ResultDisclosure } from "@/components/result-disclosure"
 
 // RDAP/EPP 域名状态字典
 const STATUS_INFO: Record<string, { label: string; severity: number; description?: string }> = {
@@ -104,7 +105,6 @@ const formatDisplayValue = (value: any): string => {
 }
 
 export function WhoisResult({ data }: WhoisResultProps) {
-  const [showRaw, setShowRaw] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
   const [exportingImage, setExportingImage] = useState(false)
@@ -646,47 +646,26 @@ export function WhoisResult({ data }: WhoisResultProps) {
 
       {/* Every parsed field is retained here, including registry-specific WHOIS fields. */}
       {allFields.length > 0 && (
-        <Card className="gap-0 py-0">
-          <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Server className="size-4 text-primary" />
-              全部查询字段
-            </CardTitle>
-            <CardDescription>数据源返回并成功解析的全部字段</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-x-8 px-5 sm:grid-cols-2 sm:px-5">
+        <ResultDisclosure title="全部查询字段" count={allFields.length}>
+          <div className="grid grid-cols-1 gap-x-8 px-5 sm:grid-cols-2">
             {allFields.map(([key, value]) => (
               <div key={key} className="min-w-0 border-b border-border/45 py-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0">
                 <p className="break-all font-mono text-[11px] text-muted-foreground">{key}</p>
                 <p className="mt-1 whitespace-pre-wrap break-all text-sm leading-6 text-foreground">{formatDisplayValue(value)}</p>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </ResultDisclosure>
       )}
 
       {/* Raw Data Toggle */}
-      <div data-export-ignore className="quiet-surface overflow-hidden rounded-lg">
-        <button 
-          onClick={() => setShowRaw(!showRaw)}
-          className="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted/60"
-          aria-expanded={showRaw}
-        >
-          <span className="font-medium flex items-center gap-2 text-sm text-muted-foreground">
-            <Server className="w-4 h-4" />
-            原始查询数据
-          </span>
-          {showRaw ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-        </button>
-        
-        {showRaw && (
-          <div className="max-h-[500px] overflow-x-auto border-t bg-muted/30">
+      <ResultDisclosure title="原始查询数据" excludeFromImage>
+          <div className="max-h-[500px] overflow-auto bg-muted/30">
              <pre className="whitespace-pre-wrap p-5 font-mono text-xs leading-relaxed text-muted-foreground selection:bg-primary/20 sm:p-6">
                {raw || JSON.stringify(data, null, 2)}
              </pre>
           </div>
-        )}
-      </div>
+      </ResultDisclosure>
 
       <p className="break-all text-xs leading-5 text-muted-foreground">
         Whois 查询 · {data.query} · 查询时间：{formatDate(data.timestamp)}

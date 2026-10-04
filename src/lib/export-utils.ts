@@ -32,6 +32,12 @@ export async function exportResultImage(element: HTMLElement, query: string): Pr
   container.setAttribute('aria-hidden', 'true')
   const snapshot = element.cloneNode(true) as HTMLElement
   snapshot.querySelectorAll('[data-export-ignore]').forEach(node => node.remove())
+  // Export every structured field even when its on-screen section is collapsed.
+  snapshot.querySelectorAll<HTMLElement>('[data-export-panel]').forEach(panel => { panel.hidden = false })
+  snapshot.querySelectorAll('[aria-expanded]').forEach(button => {
+    button.setAttribute('aria-expanded', 'true')
+    button.querySelector('[data-disclosure-chevron]')?.classList.add('rotate-180')
+  })
   const backgroundColor = getComputedStyle(document.body).backgroundColor
   Object.assign(snapshot.style, {
     width: `${element.clientWidth + 48}px`, maxWidth: 'none', margin: '0', padding: '24px',
