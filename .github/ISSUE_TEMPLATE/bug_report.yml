@@ -1,0 +1,86 @@
+name: 问题报告
+description: 报告查询、解析、页面或部署中的可复现问题。
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先查阅 README 与验证报告，并搜索已有 Issue。
+        使用可公开的查询样例；提交前删除联系人个人信息、查询历史、令牌和密钥。
+  - type: dropdown
+    id: query_type
+    attributes:
+      label: 查询类型
+      options:
+        - 域名（含 IDN / 国别域名）
+        - IPv4 / IPv6
+        - CIDR 网段
+        - ASN
+        - 页面 / 导出 / 部署或其他
+    validations:
+      required: true
+  - type: input
+    id: query
+    attributes:
+      label: 可公开的查询样例
+      description: 提供能复现问题的域名、IP、CIDR 或 ASN；无查询相关性时填写“不适用”。
+      placeholder: "如 baidu.cn、8.8.8.8、2001:4860::/32 或 AS15169"
+    validations:
+      required: true
+  - type: dropdown
+    id: data_source
+    attributes:
+      label: 请求的数据源
+      description: 页面默认使用 auto；通过 API 查询时选择实际传入的 dataSource。
+      options:
+        - auto（默认）
+        - rdap
+        - whois
+        - registrar（仅域名）
+        - registry
+        - 不适用 / 未知
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤与预期结果
+      description: 写明页面操作或 API 方法与参数，以及你认为应当出现的结果。
+      placeholder: |
+        1. 打开……
+        2. 输入……并提交 / GET 或 POST /api/whois……
+        预期结果：……
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果与错误
+      description: 附 HTTP 状态、error、响应中的 dataSource / 上游服务器或脱敏截图。只贴必要的响应片段。
+      placeholder: |
+        HTTP 状态：
+        错误提示或错误字段：
+        实际查询值、返回来源或上游服务器（若有）：
+        必要的脱敏响应片段 / 截图：
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 版本、部署环境与网络
+      description: 连接失败时请记录 TCP 43 和 HTTP/HTTPS 出站情况；不确定可写“未验证”。
+      placeholder: |
+        项目版本或 commit / 出现问题的日期与时区：
+        访问地址（生产 / beta / 本地）：
+        操作系统、浏览器及版本（页面问题）：
+        Node.js 版本、部署平台或启动方式（自行部署时）：
+        HTTP/HTTPS 出站、TCP 43 出站、超时或注册局授权情况：
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 提交前检查
+      options:
+        - label: 我已搜索已有 Issue，并对响应、日志、截图和查询样例进行脱敏，未包含个人联系人信息或密钥。
+          required: true

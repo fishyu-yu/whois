@@ -2,28 +2,38 @@
 
 ![Whale Whois — 域名与网络信息查询](public/logo-lockup.svg)
 
-一个可自行部署的 WHOIS / RDAP 查询工具。输入域名、IP、CIDR 或 ASN，
-即可查看注册信息、数据来源和原始响应，并导出查询结果。
+[![Node.js 22+][node-badge]](package.json)
+[![Next.js 15][next-badge]](package.json)
+[![AGPL-3.0-only][license-badge]](LICENSE)
 
-基于 Next.js 15、React 19、TypeScript 与 Tailwind CSS 4，使用 Node.js 直接查询上游服务。
-无需 API Key、数据库或系统 `whois` 命令。
+一个可自行部署的 WHOIS / RDAP 查询工具。输入域名、IP、CIDR 或 ASN，
+即可查看注册信息、查询来源和原始数据，并导出 PNG、JSON 或 CSV。
+
+**[在线使用][website] · [API 文档](docs/api.md) ·
+[部署指南](docs/deployment.md) · [反馈问题][issues]**
+
+基于 Next.js 15、React 19、TypeScript 与 Tailwind CSS 4。
+查询无需 API Key、数据库或系统 `whois` 命令。
 
 ## 功能
 
-- **域名查询**：支持常见通用域名、国别域名及中文域名，自动转换 IDN/Punycode。
-- **自动识别注册域名**：根据公共后缀规则移除子域名，保留 `edu.kg`、`co.uk` 等多级后缀。
-- **网络查询**：支持 IPv4、IPv6、CIDR 和 ASN，覆盖五大区域互联网注册机构。
-- **自动选择来源**：优先 RDAP，服务不可用时回退 TCP WHOIS；API 可指定查询来源。
-- **可分享的查询路径**：支持直接访问、刷新、浏览器前进/后退和旧版编码链接。
-- **结果导出**：下载 PNG、JSON 或 CSV；PNG 保留当前主题、结构化字段及查询时间。
-- **使用体验**：适配手机与桌面，支持浅色/深色主题和保存在本机的查询历史。
+| 能力 | 说明 |
+| --- | --- |
+| 域名查询 | 支持通用域名、国别域名和中文域名，自动转换 IDN/Punycode |
+| 注册域名识别 | 按公共后缀规则移除子域名，保留 `co.uk`、`edu.kg` 等多级后缀 |
+| 网络查询 | 支持 IPv4、IPv6、CIDR 和 ASN，覆盖五大区域互联网注册机构 |
+| 双协议查询 | 优先 RDAP，不可用时回退 TCP WHOIS；API 可指定数据源 |
+| 结果阅读 | 展示结构化字段和实际来源，详情与原始数据可独立展开 |
+| 分享与导出 | 查询地址可直接分享；支持 PNG、JSON、CSV 和复制原始数据 |
+| 主题与历史 | 适配手机和桌面，支持浅色/深色主题及浏览器本地查询历史 |
 
-网络结果表示资源的注册与分配信息；注册地区不等同于 IP 实际位置，
-查询结果也不提供实时 BGP 路由信息。
+网络结果反映资源的注册与分配信息，不代表 IP 的实时地理位置或 BGP 路由。
+可查询字段取决于注册机构公开的数据，部分联系人信息可能被隐去。
 
-## 本地运行
+## 快速开始
 
-准备 Git、Node.js 22 或更新版本及 npm。推荐使用 `.nvmrc` 指定的 Node.js 24。
+准备 Git、Node.js 22 或更新版本及 npm。
+推荐使用 [.nvmrc](.nvmrc) 指定的 Node.js 24。
 
 ```bash
 git clone https://github.com/fishyu-yu/whois.git
@@ -32,71 +42,36 @@ npm ci
 npm run dev
 ```
 
-打开 <http://localhost:3000>。默认不需要创建 `.env` 文件。
+打开 <http://localhost:3000>。默认无需创建 `.env` 文件。
 更换端口可运行 `npm run dev -- -p 3001`。
 
 ## 使用示例
 
-在搜索框输入查询值，或直接打开对应路径：
+在搜索框输入查询值，或将查询路径拼接到站点地址后直接访问：
 
-| 查询类型 | 输入示例 | 页面路径 |
+| 查询类型 | 输入示例 | 查询路径 |
 | --- | --- | --- |
 | 域名 | `baidu.cn` | `/baidu.cn` |
+| 子域名 | `www.qq.com` | `/qq.com` |
+| 多级后缀域名 | `www.xx.edu.kg` | `/xx.edu.kg` |
 | IPv4 | `8.8.8.8` | `/8.8.8.8` |
 | IPv6 | `2001:4860::8888` | `/2001:4860::8888` |
 | IPv4 网段 | `8.8.8.9/24` | `/8.8.8.0/24` |
 | IPv6 网段 | `2001:4860::/32` | `/2001:4860::/32` |
 | ASN | `15169` 或 `AS15169` | `/AS15169` |
 
-CIDR 会清除主机位，ASN 会统一大小写并移除前导零。
+域名查询会提示移除子域名后的目标；CIDR 会清除主机位，ASN 会统一格式。
+仅输入 `co.uk`、`edu.kg` 等公共后缀时会提示输入错误。
 搜索框也接受 `/baidu.cn` 这样的站内查询路径。
 
-域名查询会自动选择可注册域名：`www.qq.com` 查询 `qq.com`，
-`www.xx.edu.kg` 查询 `xx.edu.kg`，输入 `xx.edu.kg` 则保留完整域名。
-搜索框会提示移除子域名后的查询目标，结果、分享路径和历史记录使用实际查询的域名。
-仅输入 `edu.kg`、`co.uk` 等公共后缀时会提示输入错误。
-
-结果页的「全部查询字段」与「原始查询数据」默认收起，点击各自标题即可独立展开或隐藏。
-结果仍可复制或下载。PNG 在浏览器本地生成，导出时自动包含收起的全部结构化字段，
-不包含操作按钮和原始数据折叠区；需要保存原始查询文本时请选择 JSON 或 CSV。
-历史记录保存在当前浏览器，不会在设备间同步。
-
-## 查询原理与国别域名
-
-域名查询通过 IANA 引导表选择 RDAP 服务，使用本地已核实的映射补充。
-自动模式在 RDAP 不可用时通过 Node.js TCP 套接字查询 WHOIS。
-注册商补充查询失败时仍保留有效的注册局记录。
-注册域名识别使用 `tldts` 内置的
-[Public Suffix List](https://publicsuffix.org/list/) ICANN 规则，
-支持多级后缀、通配符和例外规则；规则随依赖更新，无需每次查询下载。
-WHOIS/RDAP 查询注册局记录，因此 `user.github.io` 等托管平台子域名查询 `github.io`。
-公共后缀列表未收录的后缀保留完整输入，避免猜测注册层级而误删标签。
-域名 RDAP 明确返回未注册时直接返回 404；网络 RDAP 返回 404 时，
-自动模式会再通过 WHOIS 核实资源是否存在。
-
-针对国别注册局的差异，项目包含专门处理：
-
-| 后缀 | 处理方式与限制 |
-| --- | --- |
-| `.cn` | 使用 CNNIC WHOIS，部署环境必须允许 TCP 43 出站 |
-| `.jp` | 使用 JPRS 英文查询格式，解析对应字段 |
-| `.tw` | 使用域名服务器 `whois.twnic.net.tw` |
-| `.es` | WHOIS 需要注册局授权服务器的出站 IP |
-
-国别 WHOIS 地址来自本地数据库；未收录后缀尝试通过 IANA 查找。
-IP/ASN 使用 IANA 网络引导表，并支持区域机构之间的已核实转介，
-包括 LACNIC 到 Registro.br；返回的资源范围必须包含所查询的资源。
-
-历史实测结果与已知限制见：
-
-- [国别域名验证报告](docs/cctld-verification.md)
-- [IP / ASN 查询验收报告](docs/network-verification.md)
-
-报告中的结果对应各自标注的验证日期，不代表上游服务始终可用。
+「全部查询字段」与「原始查询数据」默认收起，可点击标题独立展开。
+PNG 在浏览器本地生成，保留当前主题、查询时间和全部结构化字段，
+即使详情收起也会完整导出；原始数据请使用 JSON 或 CSV 保存。
+查询历史最多保存 20 条，仅存于当前浏览器，不在设备间同步。
 
 ## HTTP API
 
-GET 和 POST 使用相同的校验与查询逻辑。
+GET 与 POST 共用查询逻辑，支持自动识别类型和指定数据源：
 
 ```text
 GET /api/whois?q=baidu.cn&dataSource=auto
@@ -115,163 +90,63 @@ Content-Type: application/json
 }
 ```
 
-| 参数 | 说明 |
-| --- | --- |
-| `query` | POST 的必填查询值；GET 使用 `q` |
-| `type` | `domain`、`ip`、`asn`；省略或使用 `auto` 时自动识别 |
-| `dataSource` | 可选，默认为 `auto`，行为见下表 |
+成功响应包含 `query`、`type`、`success`、`data` 和 `error`。
+完整参数、来源选择、响应字段、状态码与缓存规则见 [API 文档](docs/api.md)。
 
-ASN 的有效范围为 1–4294967295，CIDR 使用 `type=ip`。
-GET 和 POST 的域名查询同样会移除已识别的子域名，
-响应中的 `query` 为实际查询的注册域名。
+## 部署
 
-| 数据源 | 域名查询 | IP / ASN 查询 |
+应用包含服务端查询 API，需要可运行服务端代码的环境。
+标准部署使用 Node.js；仓库另提供
+OpenNext / Cloudflare Workers 配置，用于 `beta` 分支部署。
+
+| 方式 | 构建与运行 | 适用说明 |
 | --- | --- | --- |
-| `auto` | 优先 RDAP，不可用时回退 WHOIS | 优先 RDAP，失败时通过 WHOIS 核实 |
-| `rdap` | 仅 RDAP | 仅 RDAP |
-| `whois` | WHOIS，尝试注册商补充查询 | 网络 WHOIS |
-| `registrar` | 优先注册商 WHOIS，失败时保留注册局记录 | 不支持，返回 400 |
-| `registry` | 仅注册局 WHOIS，不跟随注册商转介 | 等同于 `whois` |
+| Node.js | `npm run build` → `npm start` | 自行托管或支持 Node.js 的平台，需允许 TCP 43 出站 |
+| Cloudflare beta | 见部署指南 | OpenNext / `nodejs_compat`，需验证 WHOIS 出站 |
 
-成功响应示例（节选）：
-
-```json
-{
-  "query": "baidu.cn",
-  "type": "domain",
-  "success": true,
-  "data": {
-    "query": "baidu.cn",
-    "type": "domain",
-    "dataSource": "registry",
-    "raw": "Domain Name: baidu.cn\n...",
-    "parsed": {
-      "domain_name": "baidu.cn"
-    }
-  },
-  "error": null
-}
-```
-
-`data.raw` 为查询文本，`data.parsed` 为结构化字段；实际字段取决于查询类型和上游公开信息。
-失败时 `success` 为 `false`、`data` 为 `null`，`error` 提供错误说明。
-
-| HTTP 状态 | 含义 |
-| --- | --- |
-| `200` | 查询成功 |
-| `400` | 输入非法或不支持的查询选项 |
-| `404` | 域名未注册或网络资源记录未找到 |
-| `502` | 上游不可用、超时、空响应或限流等查询失败 |
-
-成功结果按查询类型、规范化查询值和数据源在进程内缓存 5 分钟，最多 500 条。
-失败结果不进入成功缓存，多实例之间不共享缓存。
-
-## 生产部署
-
-应用需要支持 Node.js 的部署环境，不能使用纯静态托管或 Edge Runtime。
+Node.js 生产运行：
 
 ```bash
 npm ci
-npm test
-npm run lint:all
 npm run build
-npm run typecheck
 npm start
 ```
 
-`npm start` 默认监听 3000 端口，可通过 `npm start -- -p 3001` 更改。
-自行托管时，应使用进程管理器保持服务运行，并通过反向代理提供 HTTPS。
-更新版本后需要重新安装锁定依赖、构建并重启服务。
+发布前的检查、Cloudflare 配置与自动部署步骤见 [部署指南](docs/deployment.md)。
+GitHub 仓库默认分支为 `master`，现有网站入口为 [whois.f1shyu.com][website]。
+GitHub Pages 当前未启用；它的静态托管无法直接运行本项目的查询 API。
 
-部署平台需要满足以下网络条件：
+部署环境必须能访问 IANA 和各注册机构的 HTTP/HTTPS 服务，
+并允许 TCP 43 出站以支持 `.cn` 等依赖 WHOIS 的查询。
+上游限流、超时及注册局授权会影响可用性，`.es` 还需要出站 IP 授权。
 
-- 允许访问 IANA 和各注册机构的 HTTP/HTTPS 服务。
-- 允许 TCP 43 出站，否则 `.cn` 等依赖 WHOIS 的查询会失败。
-- 单次 RDAP 请求超时为 10 秒，单次 WHOIS 为 12 秒；
-  回退与转介可能产生多次请求，平台总请求时限应留足余量。
-- WHOIS 响应上限为 1 MiB，网络 RDAP 响应上限为 2 MiB。
-- 查询 `.es` 前需按 [Dominios.es 说明][es-whois]申请出站 IP 授权。
+## 文档与验证
 
-仓库不包含绑定具体平台的自动部署工作流。
-如果托管平台已连接 GitHub，请将生产分支设为 `master`，并在推送后确认构建与部署结果。
-推送成功本身不代表线上服务已更新。
-部署后可使用下方实网脚本，将 `--base` 设置为生产地址检查查询能力。
-
-[es-whois]: https://www.dominios.es/es/sobre-dominios/valores-anadidos/whois-43
-
-## 测试与验证
-
-### 本地自动化检查
-
-```bash
-npm test
-npm run lint:all
-npm run build
-npm run typecheck
-```
-
-单元与 API 测试使用模拟 RDAP 响应和本地 TCP 服务，无需访问外部注册局。
-覆盖国别域名解析、中文域名、GET/POST、回退、错误、超时、响应大小限制，
-以及 IPv6/CIDR、ASN 边界、转介、资源范围校验和查询路径规范化。
-
-### 浏览器回归
-
-```bash
-npx playwright install chromium
-npm run build
-npm run test:e2e
-```
-
-Windows 已安装 Edge 时，可先在 PowerShell 设置：
-
-```powershell
-$env:PLAYWRIGHT_CHANNEL='msedge'
-```
-
-测试默认启动 3002 端口的生产服务，覆盖 320、390、768、1440 像素宽度及浅色/深色主题，
-检查查询、分享路径、刷新、历史记录、错误恢复和 PNG/JSON/CSV 导出。
-报告及截图位于 `.local/playwright-report/` 和 `.local/playwright-results/`。
-
-### 真实注册局检查
-
-先启动应用，再在另一个终端运行：
-
-```bash
-# 28 个国别后缀，每个选取一个已注册域名
-npm run test:live -- --base http://localhost:3000
-
-# 仅验证指定域名
-npm run test:live -- --domains baidu.cn,jprs.jp --base http://localhost:3000
-
-# 五大区域机构的 IP、CIDR 与 ASN；默认检查 auto 和 whois
-npm run test:networks -- --base http://localhost:3000
-
-# 同时检查强制 RDAP 模式
-npm run test:networks -- --sources auto,rdap,whois --base http://localhost:3000
-```
-
-脚本校验响应状态与结果字段，任一检查失败时返回非零退出码。
-报告默认保存到已被 Git 忽略的 `.local/` 目录，不包含联系人个人数据。
-真实查询受出站网络、上游限流与注册局授权影响，因此与普通自动化测试分开运行。
-
-## 代码导航
-
-| 路径 | 职责 |
+| 文档 | 内容 |
 | --- | --- |
-| `src/app/[[...query]]/page.tsx` | 首页及统一查询路由 |
-| `src/app/api/whois/route.ts` | HTTP API、校验、缓存与来源选择 |
-| `src/components/query-page.tsx` | 查询状态、地址栏与历史记录 |
-| `src/components/whois-form.tsx` | 输入与查询类型识别 |
-| `src/components/whois-result.tsx` | 结构化结果、原始数据与导出入口 |
-| `src/lib/query-utils.ts`、`query-path.ts` | IP/ASN 校验、规范化与路径处理 |
-| `src/lib/domain-utils.ts`、`cctld-database.ts` | 域名校验与国别服务器映射 |
-| `src/lib/rdap-client.ts`、`rdap-parser.ts` | 域名 RDAP 查询与解析 |
-| `src/lib/whois-client.ts`、`whois-parser.ts` | 域名 TCP WHOIS、转介与解析 |
-| `src/lib/network-client.ts`、`network-parser.ts` | IP/ASN 查询、转介与资源范围验证 |
-| `src/lib/export-utils.ts` | PNG、CSV 与下载工具 |
-| `tests/`、`scripts/` | 自动化测试与实网验证脚本 |
-| `docs/` | 有日期和环境说明的验收记录 |
+| [API 文档](docs/api.md) | 参数、响应、数据源、规范化与缓存 |
+| [部署指南](docs/deployment.md) | Node.js、Cloudflare beta、网络要求及上线检查 |
+| [开发与测试](docs/development.md) | 本地检查、浏览器回归、实网验证与代码导航 |
+| [贡献指南](CONTRIBUTING.md) | 问题反馈、开发流程和 PR 要求 |
+| [GitHub 仓库设置](docs/github.md) | 已核实的首页设置、分支与 Pages 状态 |
+| [国别域名验证报告](docs/cctld-verification.md) | 国别注册局的历史实测与限制 |
+| [IP / ASN 验收报告](docs/network-verification.md) | 网络资源查询的历史实测与限制 |
+
+验收报告中的结果对应各自标注的日期与环境，不代表上游服务始终可用。
+单元与 API 测试使用模拟响应和本地 TCP 服务；实网验证另行运行。
+
+## 参与贡献
+
+欢迎通过 [Issues][issues] 反馈查询异常或提出功能建议，
+也可以提交 Pull Request 改进解析、查询兼容性、界面或文档。
+开始前请阅读 [贡献指南](CONTRIBUTING.md)，提交样例时移除个人信息和凭据。
 
 ## 许可证
 
-许可条款见 [LICENSE](LICENSE)。
+本项目使用 **AGPL-3.0-only**，许可条款见 [LICENSE](LICENSE)。
+
+[website]: https://whois.f1shyu.com
+[issues]: https://github.com/fishyu-yu/whois/issues
+[node-badge]: https://img.shields.io/badge/Node.js-%E2%89%A522-43853D?logo=node.js&logoColor=white
+[next-badge]: https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white
+[license-badge]: https://img.shields.io/badge/license-AGPL--3.0--only-blue

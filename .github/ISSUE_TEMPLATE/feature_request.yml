@@ -1,0 +1,27 @@
+name: 功能建议
+description: 描述使用场景和期望改善的查询或交互行为。
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先搜索已有 Issue，并说明实际使用场景。示例和截图请先脱敏。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用场景与当前问题
+      description: 你在查询域名、IP、CIDR、ASN，或使用页面、API、导出、部署时遇到了什么困难？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的行为
+      description: 描述用户如何使用这项功能，以及怎样判断它满足需求。可附替代方案或公开示例。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 补充依据（可选）
+      description: 新增注册局或数据源时，可附官方文档、服务地址及已验证的样例；界面建议可附脱敏示意图。

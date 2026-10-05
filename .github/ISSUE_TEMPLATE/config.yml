@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 使用、API 与部署说明
+    url: https://github.com/fishyu-yu/whois/blob/master/README.md
+    about: 查看查询类型、来源选择、本地运行和部署网络要求。
+  - name: 国别域名验证报告
+    url: https://github.com/fishyu-yu/whois/blob/master/docs/cctld-verification.md
+    about: 查看已验证的国别域名行为和注册局限制，结论对应报告日期。
+  - name: IP / ASN 查询验收报告
+    url: https://github.com/fishyu-yu/whois/blob/master/docs/network-verification.md
+    about: 查看网络查询、区域注册机构转介和历史验收结果。
