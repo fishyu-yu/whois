@@ -3,7 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+// Use cached Inter when available, while cold/slow connections can paint the
+// adjusted system fallback without waiting for or later swapping a font file.
+const inter = Inter({ subsets: ["latin"], display: "optional", preload: false, variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Whois查询工具 - 专业的域名信息查询平台",
@@ -45,7 +47,8 @@ export default function RootLayout({
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#102C49" />
+        <meta name="theme-color" content="#f7f6f2" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#191919" media="(prefers-color-scheme: dark)" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Whois查询" />
@@ -68,7 +71,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={inter.variable}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -8,12 +8,12 @@
  */
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Copy, Globe, Server, Check, ShieldCheck, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink, ImageDown, Loader2 } from "lucide-react"
+import { Copy, Globe, Server, Check, Calendar, User, Mail, Phone, MapPin, Download, AlertTriangle, CircleCheck, ExternalLink, ImageDown, Loader2, Clock3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { csvContent, downloadBlob, exportBasename, exportResultImage } from "@/lib/export-utils"
 import { ResultDisclosure } from "@/components/result-disclosure"
@@ -104,6 +104,82 @@ const formatDisplayValue = (value: any): string => {
   return value === undefined || value === null ? "" : String(value)
 }
 
+interface ContactCardProps {
+  title: string
+  contact: Record<string, any> | null
+  alwaysShow?: boolean
+}
+
+// Keep the component identity stable when export or clipboard feedback changes.
+function ContactCard({ title, contact, alwaysShow = false }: ContactCardProps) {
+  const name = contact?.name || contact?.Name
+  const org = contact?.organization || contact?.org || contact?.Organization
+  const email = contact?.email || contact?.Email || contact?.["e-mail"]
+  const phone = contact?.phone || contact?.Phone || contact?.["phone-number"]
+  const fax = contact?.fax || contact?.Fax
+  const titleText = contact?.title || contact?.Title
+  const role = contact?.role || contact?.Role
+  const street = contact?.street || contact?.address || contact?.Street
+  const city = contact?.city || contact?.City
+  const state = contact?.state || contact?.State || contact?.province
+  const postalCode = contact?.postalCode || contact?.postal_code || contact?.zip
+  const country = contact?.country || contact?.Country || contact?.["country-code"]
+  const hasData = [name, org, email, phone, fax, titleText, role, street, city, state, postalCode, country]
+    .some(value => formatDisplayValue(value).trim().length > 0)
+
+  if (!hasData && !alwaysShow) return null
+
+  return (
+    <Card className="min-w-0 gap-0 py-0">
+      <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <User aria-hidden="true" className="size-4 text-muted-foreground" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="min-w-0 space-y-4 px-5 py-5 text-sm sm:px-5">
+        {hasData ? (
+          <>
+            {(name || org || titleText || role) && (
+              <div className="space-y-1 [overflow-wrap:anywhere]">
+                {name && <p className="whitespace-pre-wrap font-medium leading-6">{formatDisplayValue(name)}</p>}
+                {org && <p className="whitespace-pre-wrap leading-6 text-muted-foreground">{formatDisplayValue(org)}</p>}
+                {(titleText || role) && <p className="text-xs leading-5 text-muted-foreground">{[titleText, role].map(formatDisplayValue).filter(Boolean).join(" · ")}</p>}
+              </div>
+            )}
+            {(email || phone || fax) && (
+              <div className="space-y-2">
+                {email && (
+                  <p className="flex min-w-0 items-start gap-2">
+                    <Mail aria-hidden="true" className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-6">{formatDisplayValue(email)}</span>
+                  </p>
+                )}
+                {phone && (
+                  <p className="flex min-w-0 items-start gap-2">
+                    <Phone aria-hidden="true" className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-6">{formatDisplayValue(phone)}</span>
+                  </p>
+                )}
+                {fax && <p className="whitespace-pre-wrap break-all font-mono text-xs leading-6 text-muted-foreground">传真：{formatDisplayValue(fax)}</p>}
+              </div>
+            )}
+            {(street || city || state || postalCode || country) && (
+              <div className="flex min-w-0 items-start gap-2 text-muted-foreground">
+                <MapPin aria-hidden="true" className="mt-1 size-3.5 shrink-0" />
+                <div className="min-w-0 whitespace-pre-wrap text-xs leading-6 [overflow-wrap:anywhere]">
+                  {street && <p>{formatDisplayValue(street)}</p>}
+                  <p>{[city, state, postalCode, country].map(formatDisplayValue).filter(Boolean).join(", ")}</p>
+                </div>
+              </div>
+            )}
+          </>
+        ) : <p className="py-2 text-xs leading-6 text-muted-foreground">未返回联系信息</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function WhoisResult({ data }: WhoisResultProps) {
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
@@ -111,6 +187,11 @@ export function WhoisResult({ data }: WhoisResultProps) {
   const [exportError, setExportError] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
   const exportInProgress = useRef(false)
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current)
+  }, [])
 
   if (!data || !data.result) return null
 
@@ -122,11 +203,11 @@ export function WhoisResult({ data }: WhoisResultProps) {
         <div className="quiet-surface rounded-lg p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-              <AlertTriangle className="size-5" />
+              <AlertTriangle aria-hidden="true" className="size-5" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-destructive">查询失败</p>
-              <h1 className="mt-2 truncate text-2xl font-semibold text-foreground sm:text-3xl">
+              <h1 className="mt-2 break-all font-mono text-2xl font-semibold text-foreground sm:text-3xl">
                 {data.query || "查询结果"}
               </h1>
               <p className="mt-4 whitespace-pre-wrap break-words rounded-lg bg-muted/70 p-4 text-sm leading-6 text-muted-foreground">
@@ -275,7 +356,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
     }
   }
 
-  const daysRemaining = calculateDaysRemaining(normalized.expirationDate)
+  const daysRemaining = isNetwork ? null : calculateDaysRemaining(normalized.expirationDate)
   const allFields = Object.entries(parsed || {}).filter(([, value]) => {
     if (value === undefined || value === null) return false
     if (typeof value === "string") return value.trim().length > 0
@@ -298,11 +379,15 @@ export function WhoisResult({ data }: WhoisResultProps) {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(raw)
+      await navigator.clipboard.writeText(raw || JSON.stringify(data, null, 2))
       setCopied(true)
       setCopyError(false)
-      setTimeout(() => setCopied(false), 2000)
-    } catch { setCopyError(true) }
+      if (copyResetTimer.current) clearTimeout(copyResetTimer.current)
+      copyResetTimer.current = setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+      setCopyError(true)
+    }
   }
 
   const handleExport = (format: 'json' | 'csv') => {
@@ -331,6 +416,7 @@ export function WhoisResult({ data }: WhoisResultProps) {
               ["状态", normalized.domainStatus.join("; ")],
               ["注册人名称", normalized.registrant.name || normalized.registrant.organization || ""],
               ["注册人邮箱", normalized.registrant.email || ""],
+              ...allFields.map(([key, value]) => [key, formatDisplayValue(value)]),
               ["原始数据", raw]
           ]
           content = csvContent(rows)
@@ -356,321 +442,206 @@ export function WhoisResult({ data }: WhoisResultProps) {
     }
   }
 
-  const ContactCard = ({ title, contact, alwaysShow = false }: { title: string, contact: any, alwaysShow?: boolean }) => {
-    if (!contact || Object.keys(contact).length === 0) {
-      if (!alwaysShow) return null
+  const displayQuery = queryTitle || normalized.domain || data.query || "查询结果"
+  const objectType = queryType === 'asn' ? 'ASN' : queryType === 'ip'
+    ? String(displayQuery).includes('/') ? 'CIDR 网段' : 'IP 地址'
+    : '域名'
+  const summaryOrganization = isNetwork ? parsed?.organization || parsed?.network_name : normalized.registrar
+  const dateFields = [
+    { label: '注册时间', value: normalized.registrationDate },
+    ...(!isNetwork ? [{ label: '过期时间', value: normalized.expirationDate }] : []),
+    { label: '更新时间', value: normalized.updatedDate },
+  ].filter(field => formatDisplayValue(field.value).trim().length > 0)
+  const registrarHref = (() => {
+    if (typeof normalized.registrarUrl !== 'string') return null
+    try {
+      const url = new URL(normalized.registrarUrl)
+      return ['http:', 'https:'].includes(url.protocol) ? url.href : null
+    } catch {
+      return null
     }
-
-    const name = contact?.name || contact?.Name
-    const org = contact?.organization || contact?.org || contact?.Organization
-    const email = contact?.email || contact?.Email || contact?.["e-mail"]
-    const phone = contact?.phone || contact?.Phone || contact?.["phone-number"]
-    const fax = contact?.fax || contact?.Fax
-    const titleText = contact?.title || contact?.Title
-    const role = contact?.role || contact?.Role
-    const street = contact?.street || contact?.address || contact?.Street
-    const city = contact?.city || contact?.City
-    const state = contact?.state || contact?.State || contact?.province
-    const postalCode = contact?.postalCode || contact?.postal_code || contact?.zip
-    const country = contact?.country || contact?.Country || contact?.["country-code"]
-
-    const hasData = name || org || email || phone || fax || titleText || role || street || city || state || postalCode || country
-
-    if (!hasData && !alwaysShow) return null
-
-    return (
-      <Card className="h-full gap-0 py-0">
-        <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
-        <CardTitle className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <User className="size-3.5" />
-          {title}
-        </CardTitle>
-        </CardHeader>
-        
-        <CardContent className="space-y-3 px-5 py-5 sm:px-5">
-          {hasData ? (
-            <>
-              {(name || org || titleText || role) && (
-                <div>
-                   {name && <div className="whitespace-pre-wrap break-words font-medium text-foreground">{formatDisplayValue(name)}</div>}
-                   {org && <div className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{formatDisplayValue(org)}</div>}
-                   {(titleText || role) && <div className="mt-1 text-xs text-muted-foreground">{[titleText, role].map(formatDisplayValue).filter(Boolean).join(" · ")}</div>}
-                </div>
-              )}
-              
-              {(email || phone || fax) && (
-                 <div className="pt-2 space-y-2">
-                    {email && (
-                      <div className="flex min-w-0 items-start gap-2 text-sm">
-                        <Mail className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-5" title={formatDisplayValue(email)}>{formatDisplayValue(email)}</span>
-                      </div>
-                    )}
-                    {phone && (
-                      <div className="flex min-w-0 items-start gap-2 text-sm">
-                        <Phone className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-5">{formatDisplayValue(phone)}</span>
-                      </div>
-                    )}
-                    {fax && <p className="break-all pl-5.5 font-mono text-xs text-muted-foreground">传真：{formatDisplayValue(fax)}</p>}
-                 </div>
-              )}
-
-              {(street || city || state || postalCode || country) && (
-                <div className="pt-2 flex items-start gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                  <div className="min-w-0 break-words">
-                    {street && <p className="whitespace-pre-wrap">{formatDisplayValue(street)}</p>}
-                    <p>{[city, state, postalCode, country].map(formatDisplayValue).filter(Boolean).join(", ")}</p>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-             <div className="flex flex-col items-center justify-center py-7 text-muted-foreground">
-               <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-muted">
-                 <ShieldCheck className="size-4" />
-               </div>
-               <p className="text-xs font-medium">隐私保护已开启</p>
-             </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
+  })()
 
   return (
-    <div ref={resultRef} className="result-flow mx-auto w-full max-w-5xl space-y-4 pb-12">
-      
-      {/* Header Section */}
-      <div className="quiet-surface flex flex-col justify-between gap-5 rounded-lg p-5 md:flex-row md:items-end sm:p-6">
-        <div className="min-w-0">
-          <p className="mb-2 flex items-center gap-2 text-sm font-medium text-primary">
-            <CircleCheck className="size-3.5" />
-            查询完成
-          </p>
-          <h1 className="break-all text-3xl font-semibold text-foreground sm:text-4xl">
-            {queryTitle || normalized.domain || "查询结果"}
+    <div ref={resultRef} className="result-flow mx-auto w-full min-w-0 max-w-5xl space-y-4 pb-10">
+      <section aria-label="查询结果摘要" className="quiet-surface min-w-0 overflow-hidden rounded-xl">
+        <div className="min-w-0 px-5 py-6 sm:px-6 sm:py-7">
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 font-medium text-primary">
+              <CircleCheck aria-hidden="true" className="size-3.5" />
+              查询完成
+            </span>
+            <span className="h-3 w-px bg-border" aria-hidden="true" />
+            <span className="text-muted-foreground">{objectType}</span>
+          </div>
+          <h1 className="break-all font-mono text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            {displayQuery}
           </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {(isNetwork ? parsed?.network_name : normalized.registrar) && (
-              <Badge variant="secondary" className="max-w-full truncate rounded-lg px-2.5 py-1 font-normal">
-                {isNetwork ? parsed?.network_name : normalized.registrar}
-              </Badge>
-            )}
-            {sourceLabel && (
-              <Badge variant="outline" className="rounded-lg px-2.5 py-1 font-normal">
-                {sourceLabel}
-              </Badge>
-            )}
+          {summaryOrganization && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">{formatDisplayValue(summaryOrganization)}</p>}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-5 text-muted-foreground">
+            {sourceLabel && <span className="inline-flex min-w-0 items-center gap-1.5 [overflow-wrap:anywhere]"><Server aria-hidden="true" className="size-3.5 shrink-0" />{sourceLabel}</span>}
+            {data.timestamp && <span className="inline-flex min-w-0 items-center gap-1.5"><Clock3 aria-hidden="true" className="size-3.5 shrink-0" /><span>查询时间：<time dateTime={data.timestamp}>{formatDate(data.timestamp)}</time></span></span>}
             {daysRemaining !== null && (
-              <Badge variant="outline" className={cn(
-                "rounded-lg border-0 px-2.5 py-1 font-normal",
-                daysRemaining < 30 ? "bg-red-500/10 text-red-700 dark:text-red-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              <Badge variant="secondary" className={cn(
+                "whitespace-normal rounded-md px-2 py-0.5 text-xs font-normal",
+                daysRemaining < 30 && "bg-destructive/10 text-destructive"
               )}>
-                {daysRemaining > 0 ? `剩余 ${daysRemaining} 天` : "已过期"}
+                {daysRemaining > 0 ? `距到期 ${daysRemaining} 天` : '已过期'}
               </Badge>
             )}
           </div>
         </div>
-        
-        <div data-export-ignore className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
-           <Button variant="outline" size="sm" onClick={handleImageExport} disabled={exportingImage}>
-             {exportingImage ? <Loader2 className="size-4 animate-spin" /> : <ImageDown className="size-4" />}
-             {exportingImage ? '正在生成图片' : '导出图片'}
-           </Button>
-           <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
-             <Download className="w-4 h-4" />
-             JSON
-           </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
-             <Download className="w-4 h-4" />
-             CSV
-           </Button>
-           <Button variant="secondary" size="sm" onClick={handleCopy}>
-             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-             {copied ? '已复制' : copyError ? '复制失败，请重试' : '复制'}
-           </Button>
+        <div data-export-ignore role="group" aria-label="查询结果操作" className="grid grid-cols-2 gap-2 border-t border-border/60 bg-muted/20 p-3 sm:flex sm:flex-wrap sm:px-5 sm:py-3">
+          <Button type="button" variant="outline" size="sm" className="min-h-11 px-3" onClick={handleImageExport} disabled={exportingImage} aria-busy={exportingImage}>
+            {exportingImage ? <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" /> : <ImageDown aria-hidden="true" className="size-4" />}
+            {exportingImage ? '正在生成图片' : '导出图片'}
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="min-h-11 px-3" onClick={() => handleExport('json')} title="下载完整 JSON 查询结果">
+            <Download aria-hidden="true" className="size-4" />JSON
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="min-h-11 px-3" onClick={() => handleExport('csv')} title="下载完整 CSV 查询结果">
+            <Download aria-hidden="true" className="size-4" />CSV
+          </Button>
+          <Button type="button" variant="secondary" size="sm" className="min-h-11 px-3 sm:ml-auto" onClick={handleCopy} title="复制原始查询数据">
+            {copied ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" />}
+            {copied ? '已复制' : copyError ? '复制失败，请重试' : '复制'}
+          </Button>
         </div>
-      </div>
+      </section>
 
-      {exportError && <p data-export-ignore role="alert" className="text-sm text-destructive">{exportError}</p>}
+      <p data-export-ignore role="status" aria-live="polite" className="sr-only">{copied ? '原始查询数据已复制到剪贴板' : exportingImage ? '正在生成查询结果图片' : ''}</p>
+      {copyError && <p data-export-ignore role="alert" className="px-1 text-sm leading-6 text-destructive">复制失败，请允许剪贴板访问后重试。</p>}
+      {exportError && <p data-export-ignore role="alert" className="px-1 text-sm leading-6 text-destructive">{exportError}</p>}
 
-      {/* Main Info Grid */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        
-        {/* Dates Card */}
-        <Card className="gap-0 py-0 lg:col-span-1">
-          <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Calendar className="size-4 text-primary" />
-              关键日期
-            </CardTitle>
-            <CardDescription>{isNetwork ? '网络资源登记时间' : '注册生命周期'}</CardDescription>
-          </CardHeader>
-          
-          <CardContent className="divide-y divide-border/45 px-5 sm:px-5">
-            <div className="py-4">
-              <p className="mb-1 text-xs text-muted-foreground">注册时间</p>
-              <p className="font-mono text-sm font-medium">{formatDate(normalized.registrationDate)}</p>
-            </div>
-            {!isNetwork && <div className="py-4">
-              <p className="mb-1 text-xs text-muted-foreground">过期时间</p>
-              <div className="flex items-center gap-2">
-                 <p className="font-mono text-sm font-medium">{formatDate(normalized.expirationDate)}</p>
-                 {daysRemaining !== null && daysRemaining < 30 && (
-                   <TooltipProvider>
-                     <Tooltip>
-                       <TooltipTrigger>
-                         <AlertTriangle className="w-4 h-4 text-orange-500" />
-                       </TooltipTrigger>
-                       <TooltipContent>域名即将过期</TooltipContent>
-                     </Tooltip>
-                   </TooltipProvider>
-                 )}
-              </div>
-            </div>}
-            <div className="py-4">
-              <p className="mb-1 text-xs text-muted-foreground">更新时间</p>
-              <p className="font-mono text-sm font-medium">{formatDate(normalized.updatedDate)}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Status & Registrar Info Card */}
-        {isNetwork ? <Card className="min-w-0 gap-0 py-0 lg:col-span-2">
-          <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Globe className="size-4 text-primary" />
-              {queryType === 'ip' ? 'IP 信息' : 'ASN 信息'}
-            </CardTitle>
-            <CardDescription>{queryType === 'ip' ? '地址范围、所属组织与分配信息' : '自治系统、所属组织与注册信息'}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid min-w-0 gap-x-8 px-5 py-1 sm:grid-cols-2 sm:px-5">
-            {networkFields.filter(([, value]) => formatDisplayValue(value)).map(([label, value]) => (
-              <div key={label} className="min-w-0 py-4">
-                <p className="mb-1 text-xs text-muted-foreground">{label}</p>
-                <p className="whitespace-pre-wrap break-all text-sm font-medium leading-6">{formatDisplayValue(value)}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card> : <Card className="gap-0 py-0 lg:col-span-2">
-          <CardHeader className="border-b border-border/45 px-5 py-4 sm:px-5">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Globe className="size-4 text-primary" />
-              域名信息
-            </CardTitle>
-            <CardDescription>注册商、状态与名称服务器</CardDescription>
-          </CardHeader>
-
-          <CardContent className="grid gap-7 px-5 py-5 sm:px-5 md:grid-cols-2">
-            <div>
-                <p className="mb-3 text-xs font-medium text-muted-foreground">域名状态</p>
-                <div className="flex flex-wrap gap-2">
-                {normalized.domainStatus.length > 0 ? (
-                    normalized.domainStatus.map((status: string, i: number) => {
-                    const info = getStatusInfo(status)
-                    const isNormal = info.severity === 0
-                    const isWarning = info.severity === 2
-                    const isDanger = info.severity >= 3
-                    
-                    return (
-                        <TooltipProvider key={i}>
-                        <Tooltip>
-                            <TooltipTrigger>
-                            <span className={cn(
-                                "cursor-help rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
-                                isNormal && "bg-green-500/10 text-green-700 dark:text-green-400",
-                                isWarning && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-                                isDanger && "bg-red-500/10 text-red-700 dark:text-red-400",
-                                info.severity === 1 && "bg-secondary text-secondary-foreground"
-                            )}>
-                                {info.label}
-                            </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                            <p>{info.description || info.code}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        </TooltipProvider>
-                    )
-                    })
-                ) : (
-                    <span className="text-muted-foreground text-sm">无状态信息</span>
-                )}
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-3">
+        {isNetwork ? (
+          <Card className={cn("min-w-0 gap-0 py-0", dateFields.length ? "lg:col-span-2" : "lg:col-span-3")}>
+            <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Globe aria-hidden="true" className="size-4 text-primary" />
+                {queryType === 'ip' ? 'IP 信息' : 'ASN 信息'}
+              </CardTitle>
+              <CardDescription className="text-xs leading-5">{queryType === 'ip' ? '地址范围、所属组织与分配信息' : '自治系统、所属组织与注册信息'}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid min-w-0 gap-x-7 px-5 py-1 sm:grid-cols-2 sm:px-5">
+              {networkFields.filter(([, value]) => formatDisplayValue(value)).map(([label, value]) => (
+                <div key={label} className="min-w-0 border-b border-border/40 py-4 last:border-0 sm:[&:nth-last-child(-n+2)]:border-0">
+                  <p className="mb-1.5 text-xs text-muted-foreground">{label}</p>
+                  <p className={cn("whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere]", ['IP 范围', 'CIDR 网段', 'ASN', 'ASN 范围', '记录标识'].includes(label) && 'font-mono')}>{formatDisplayValue(value)}</p>
                 </div>
-            </div>
-
-            <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">注册商</p>
-                <p className="text-sm font-semibold">{normalized.registrar || "未知"}</p>
-                {normalized.registrarUrl && (
-                  <a href={normalized.registrarUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                    访问注册商 <ExternalLink className="size-3" />
+              ))}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className={cn("min-w-0 gap-0 py-0", dateFields.length ? "lg:col-span-2" : "lg:col-span-3")}>
+            <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Globe aria-hidden="true" className="size-4 text-primary" />域名信息
+              </CardTitle>
+              <CardDescription className="text-xs leading-5">注册商、状态与名称服务器</CardDescription>
+            </CardHeader>
+            <CardContent className="grid min-w-0 gap-6 px-5 py-5 sm:px-5 md:grid-cols-2">
+              <div className="min-w-0">
+                <p className="mb-2 text-xs text-muted-foreground">注册商</p>
+                <p className="whitespace-pre-wrap text-sm font-medium leading-6 [overflow-wrap:anywhere]">{formatDisplayValue(normalized.registrar) || '未返回注册商信息'}</p>
+                {registrarHref && (
+                  <a href={registrarHref} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 rounded-md text-xs text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    访问注册商<ExternalLink aria-hidden="true" className="size-3" /><span className="sr-only">（在新标签页打开）</span>
                   </a>
                 )}
-                {normalized.registrarIanaId && <p className="text-muted-foreground text-xs mt-1">IANA ID: {normalized.registrarIanaId}</p>}
-                
+                {normalized.registrarIanaId && <p className="mt-1 break-all font-mono text-xs leading-5 text-muted-foreground">IANA ID: {formatDisplayValue(normalized.registrarIanaId)}</p>}
                 {(normalized.registrarAbuseEmail || normalized.registrarAbusePhone) && (
-                    <div className="mt-4 pt-4 border-t border-border/50">
-                <p className="text-xs font-medium text-muted-foreground mb-1">滥用投诉</p>
-                        {normalized.registrarAbuseEmail && <p className="whitespace-pre-wrap break-all font-mono text-xs">{formatDisplayValue(normalized.registrarAbuseEmail)}</p>}
-                        {normalized.registrarAbusePhone && <p className="text-xs font-mono">{normalized.registrarAbusePhone}</p>}
-                    </div>
+                  <div className="mt-4 space-y-1 border-t border-border/60 pt-4">
+                    <p className="mb-2 text-xs text-muted-foreground">滥用投诉</p>
+                    {normalized.registrarAbuseEmail && <p className="whitespace-pre-wrap break-all font-mono text-xs leading-6">{formatDisplayValue(normalized.registrarAbuseEmail)}</p>}
+                    {normalized.registrarAbusePhone && <p className="whitespace-pre-wrap break-all font-mono text-xs leading-6">{formatDisplayValue(normalized.registrarAbusePhone)}</p>}
+                  </div>
                 )}
-            </div>
-            
-            <div className="md:col-span-2">
-               <p className="mb-3 text-xs font-medium text-muted-foreground">DNS 服务器</p>
-               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                   {normalized.nameServers.map((ns: string, i: number) => (
-                     <div key={i} className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/75 px-3 py-2 font-mono text-xs text-foreground/80">
-                       <Server className="size-3.5 text-muted-foreground" />
-                       <span className="truncate">{ns}</span>
-                     </div>
-                   ))}
-                   {normalized.nameServers.length === 0 && <span className="text-sm text-muted-foreground">无名称服务器信息</span>}
-               </div>
-            </div>
-          </CardContent>
-        </Card>}
-      </div>
-      
-      {/* Contact Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-         <ContactCard title={isNetwork ? '资源持有人' : '注册人'} contact={normalized.registrant} alwaysShow={!isNetwork} />
-         <ContactCard title="管理员" contact={normalized.admin} alwaysShow={!isNetwork} />
-         <ContactCard title="技术联系" contact={normalized.tech} alwaysShow={!isNetwork} />
-         {isNetwork ? <ContactCard title="滥用投诉" contact={{ email: parsed?.abuse_email, phone: parsed?.abuse_phone }} /> : <ContactCard title="账单联系" contact={normalized.billing} />}
+              </div>
+              <div className="min-w-0">
+                <p className="mb-2 text-xs text-muted-foreground">域名状态</p>
+                <TooltipProvider delayDuration={180}>
+                  <div className="flex flex-wrap gap-2">
+                    {normalized.domainStatus.length > 0 ? normalized.domainStatus.map((status: string, i: number) => {
+                      const info = getStatusInfo(status)
+                      return (
+                        <Tooltip key={`${status}-${i}`}>
+                          <TooltipTrigger type="button" className={cn(
+                            "min-h-11 max-w-full cursor-help rounded-md px-2.5 py-1.5 text-left text-xs leading-5 [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            info.severity === 0 && "bg-primary/10 text-primary",
+                            info.severity === 1 && "bg-secondary text-secondary-foreground",
+                            info.severity === 2 && "bg-amber-500/10 text-amber-800 dark:text-amber-300",
+                            info.severity >= 3 && "bg-destructive/10 text-destructive"
+                          )}>
+                            {info.label}
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-64 text-xs leading-5"><p>{info.description || info.code}</p></TooltipContent>
+                        </Tooltip>
+                      )
+                    }) : <p className="text-sm leading-6 text-muted-foreground">未返回状态信息</p>}
+                  </div>
+                </TooltipProvider>
+              </div>
+              <div className="min-w-0 border-t border-border/60 pt-5 md:col-span-2">
+                <p className="mb-3 text-xs text-muted-foreground">DNS 服务器</p>
+                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                  {normalized.nameServers.map((ns: string, i: number) => (
+                    <div key={`${ns}-${i}`} className="flex min-w-0 items-start gap-2 rounded-lg bg-muted/60 px-3 py-2.5">
+                      <Server aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-5">{formatDisplayValue(ns)}</span>
+                    </div>
+                  ))}
+                  {normalized.nameServers.length === 0 && <p className="text-sm leading-6 text-muted-foreground">未返回名称服务器信息</p>}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {dateFields.length > 0 && (
+          <Card className="min-w-0 gap-0 py-0">
+            <CardHeader className="border-b border-border/60 px-5 py-4 sm:px-5">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium"><Calendar aria-hidden="true" className="size-4 text-primary" />关键日期</CardTitle>
+              <CardDescription className="text-xs leading-5">{isNetwork ? '网络资源登记时间' : '注册生命周期'}</CardDescription>
+            </CardHeader>
+            <CardContent className="divide-y divide-border/40 px-5 sm:px-5">
+              {dateFields.map(({ label, value }) => (
+                <div key={label} className="min-w-0 py-4">
+                  <p className="mb-1.5 text-xs text-muted-foreground">{label}</p>
+                  <p className="whitespace-pre-wrap font-mono text-sm leading-6 [overflow-wrap:anywhere]">{formatDate(value)}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Every parsed field is retained here, including registry-specific WHOIS fields. */}
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <ContactCard title={isNetwork ? '资源持有人' : '注册人'} contact={normalized.registrant} alwaysShow={!isNetwork} />
+        <ContactCard title="管理员" contact={normalized.admin} />
+        <ContactCard title="技术联系" contact={normalized.tech} />
+        {isNetwork ? <ContactCard title="滥用投诉" contact={{ email: parsed?.abuse_email, phone: parsed?.abuse_phone }} /> : <ContactCard title="账单联系" contact={normalized.billing} />}
+      </div>
+
+      {/* Keep every registry-specific field mounted for complete image exports. */}
       {allFields.length > 0 && (
         <ResultDisclosure title="全部查询字段" count={allFields.length}>
-          <div className="grid grid-cols-1 gap-x-8 px-5 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-x-8 px-5 sm:grid-cols-2">
             {allFields.map(([key, value]) => (
-              <div key={key} className="min-w-0 border-b border-border/45 py-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0">
-                <p className="break-all font-mono text-[11px] text-muted-foreground">{key}</p>
-                <p className="mt-1 whitespace-pre-wrap break-all text-sm leading-6 text-foreground">{formatDisplayValue(value)}</p>
+              <div key={key} className="min-w-0 border-b border-border/40 py-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0">
+                <p className="break-all font-mono text-xs leading-5 text-muted-foreground">{key}</p>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-foreground [overflow-wrap:anywhere]">{formatDisplayValue(value)}</p>
               </div>
             ))}
           </div>
         </ResultDisclosure>
       )}
-
-      {/* Raw Data Toggle */}
       <ResultDisclosure title="原始查询数据" excludeFromImage>
-          <div className="max-h-[500px] overflow-auto bg-muted/30">
-             <pre className="whitespace-pre-wrap p-5 font-mono text-xs leading-relaxed text-muted-foreground selection:bg-primary/20 sm:p-6">
-               {raw || JSON.stringify(data, null, 2)}
-             </pre>
-          </div>
+        <div tabIndex={0} role="region" aria-label="原始查询数据内容" className="max-h-[500px] overflow-auto bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+          <pre className="whitespace-pre-wrap break-all p-5 font-mono text-xs leading-6 text-foreground/80 selection:bg-primary/20 sm:p-6">{raw || JSON.stringify(data, null, 2)}</pre>
+        </div>
       </ResultDisclosure>
-
-      <p className="break-all text-xs leading-5 text-muted-foreground">
-        Whois 查询 · {data.query} · 查询时间：{formatDate(data.timestamp)}
-      </p>
-
+      <p className="px-1 text-xs leading-5 text-muted-foreground">信息来自注册机构公开记录，可能受到隐私保护或更新延迟的影响。{isNetwork && '注册地区表示资源登记信息。'}</p>
     </div>
   )
 }

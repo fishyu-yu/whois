@@ -1,6 +1,6 @@
-import { test, expect, type Page } from '@playwright/test'
-import { detectQueryType, normalizeASN, normalizeIP } from '../../src/lib/query-utils'
+import { test, expect, type Page, type Route } from '@playwright/test'
 import { normalizeQueryInput, queryPath } from '../../src/lib/query-path'
+import { mockWhoisApi } from './fixtures/whois'
 
 const ip6 = '2001:4860:4860:1234:5678:90ab:cdef:1234'
 
@@ -31,29 +31,7 @@ async function disclosure(page: Page, name: '全部查询字段' | '原始查询
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/whois', async route => {
-    const body = route.request().postDataJSON()
-    if (body.query === '8.8.4.4') return route.fulfill({ status: 502, json: { success: false, error: 'RDAP 查询超时，请稍后重试', data: null } })
-    const type = detectQueryType(body.query)
-    const query = type === 'ip' ? normalizeIP(body.query) : type === 'asn' ? normalizeASN(body.query) : body.query
-    const common = {
-      creation_date: '2020-01-02T00:00:00Z', updated_date: '2024-01-02T00:00:00Z',
-      registrant_name: 'Example, Inc. 网络服务', tech_email: 'network@example.test', abuse_email: 'abuse@example.test',
-      registry_specific_note: `Complete field export for ${query}`,
-    }
-    const parsed = type === 'domain' ? {
-      ...common, domain_name: query, registrar: 'Example Registrar', registry_expiry_date: '2035-01-02T00:00:00Z', name_server: ['ns1.example.test'], domain_status: ['ok'],
-    } : {
-      ...common, [type === 'ip' ? 'ip_address' : 'asn']: query,
-      network_name: 'EXAMPLE-NET', organization: 'Example, Inc. 网络服务', registry: 'ARIN', status: ['active'],
-      ...(type === 'ip' ? {
-        ip_version: query!.includes(':') ? 'v6' : 'v4',
-        ip_range: query!.includes(':') ? '2001:4860:: - 2001:4860:ffff:ffff:ffff:ffff:ffff:ffff' : '8.8.8.0 - 8.8.8.255',
-        cidr: query!.includes(':') ? ['2001:4860::/32'] : ['8.8.8.0/24'],
-      } : { asn_range: query }),
-    }
-    await route.fulfill({ json: { success: true, query, type, data: { query, type, parsed, raw: JSON.stringify(parsed, null, 2), dataSource: type === 'domain' ? 'rdap-registry' : 'rdap-rir' } } })
-  })
+  await mockWhoisApi(page)
 })
 
 test('all fields and raw data start collapsed, toggle independently and support the keyboard', async ({ page }, testInfo) => {
@@ -386,4 +364,72 @@ test('PNG exports render complete domain, IP and ASN results in the current them
     await expect(page.locator('pre')).toBeVisible()
     await noOverflow(page)
   }
+})
+
+test('an image export keeps its original snapshot when a new query replaces the result during module loading', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== '1440-light', 'One desktop run covers the asynchronous export snapshot race.')
+  await page.goto('/example.com')
+  await expect(page.getByRole('heading', { name: 'example.com', exact: true })).toBeVisible()
+  await page.evaluate(() => {
+    Object.assign(window, { detachedExportHeading: '' })
+    const serialize = XMLSerializer.prototype.serializeToString
+    XMLSerializer.prototype.serializeToString = function (root) {
+      if (root instanceof Element && root.localName === 'svg') {
+        Object.assign(window, { detachedExportHeading: root.querySelector('h1')?.textContent || '' })
+      }
+      return serialize.call(this, root)
+    }
+  })
+  // Hold the lazy image module after the hydrated result is ready. No hashed
+  // chunk filename or artificial delay is needed to reproduce the race.
+  const modules: Route[] = []
+  let releaseModules = false
+  await page.route('**/_next/static/chunks/*.js', async route => {
+    if (!releaseModules) {
+      modules.push(route)
+      return
+    }
+    await route.continue()
+  })
+  await page.getByRole('button', { name: '导出图片', exact: true }).click()
+  await expect.poll(() => modules.length).toBeGreaterThan(0)
+  const exportSnapshot = page.locator('body > div[inert][aria-hidden="true"]')
+  await expect(exportSnapshot).toHaveCount(1)
+  expect(await exportSnapshot.evaluate(container => {
+    container.querySelector<HTMLButtonElement>('button')?.focus()
+    return container.contains(document.activeElement)
+  }), 'offscreen export controls must never receive keyboard focus').toBe(false)
+  await submit(page, 'AS15169')
+  await page.getByRole('button', { name: '切换主题' }).click()
+  await page.getByRole('menuitem', { name: '深色', exact: true }).click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  const downloadEvent = page.waitForEvent('download')
+  releaseModules = true
+  await Promise.all(modules.map(route => route.continue()))
+  const download = await downloadEvent
+  expect(download.suggestedFilename()).toBe('whois-example.com.png')
+  await download.saveAs(testInfo.outputPath('whois-example-after-query-change.png'))
+  const stream = await download.createReadStream()
+  const buffers: Buffer[] = []
+  for await (const chunk of stream!) buffers.push(Buffer.from(chunk))
+  const png = Buffer.concat(buffers)
+  expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+  expect(png.readUInt32BE(16), 'detaching the live result must not collapse the saved image width').toBeGreaterThan(500)
+  expect(png.readUInt32BE(20)).toBeGreaterThan(1000)
+  const corner = await page.evaluate(async base64 => {
+    const image = new Image()
+    image.src = `data:image/png;base64,${base64}`
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 1
+    const context = canvas.getContext('2d')!
+    context.drawImage(image, 0, 0)
+    return Array.from(context.getImageData(0, 0, 1, 1).data)
+  }, png.toString('base64'))
+  expect(corner[0], 'canvas and snapshot use the current dark theme after module loading').toBeLessThan(128)
+  expect(corner[3]).toBe(255)
+  expect(await page.evaluate(() => (window as unknown as { detachedExportHeading: string }).detachedExportHeading)).toBe('example.com')
+  await expect(page.getByRole('heading', { name: 'AS15169', exact: true })).toBeVisible()
+  await expect(page).toHaveURL('/AS15169')
+  await noOverflow(page)
 })

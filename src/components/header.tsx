@@ -23,43 +23,46 @@ export function Header({
   className
 }: HeaderProps) {
   return (
-    <header className={cn("glass sticky top-0 z-50 w-full", className)}>
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header className={cn("sticky top-0 z-40 w-full border-b border-border/50 bg-background/95", className)}>
+      <div className="mx-auto flex min-h-16 w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2">
           {showBack && (
-            <Button variant="ghost" size="icon" asChild className="-ml-1 size-9 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" asChild className="-ml-1 text-muted-foreground hover:text-foreground">
               <Link href="/" aria-label="返回首页">
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft aria-hidden="true" className="size-5" />
               </Link>
             </Button>
           )}
           
-          <Link href="/" className="group flex items-center gap-2.5">
-            <Image src="/logo.svg" alt="" width={32} height={32} className="shrink-0 transition-transform duration-300 group-hover:scale-[1.05]" />
-            <span className="text-sm font-semibold">Whale Whois</span>
+          <Link href="/" className="flex min-h-11 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background">
+            <Image src="/logo.svg" alt="" width={30} height={30} className="shrink-0" />
+            <span className="whitespace-nowrap text-sm font-semibold tracking-tight sm:text-base">Whale Whois</span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-1">
+        <nav aria-label="页面工具" className="ml-auto flex items-center gap-0.5 sm:gap-1">
           {showHistory && (
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={onHistoryClick}
               aria-label="查询历史"
-              className={cn("size-9 text-muted-foreground hover:text-foreground", isHistoryActive && "bg-accent/60 text-foreground")}
+              aria-expanded={isHistoryActive}
+              aria-controls="history-panel"
+              title="查询历史"
+              className={cn("text-muted-foreground hover:text-foreground", isHistoryActive && "bg-accent text-foreground")}
             >
-              <History className="w-5 h-5" />
+              <History aria-hidden="true" className="size-5" />
             </Button>
           )}
           
-          <Link href="https://github.com/fishyu-yu/whois" target="_blank" aria-label="打开 GitHub 仓库">
-            <Button variant="ghost" size="icon" className="size-9 text-muted-foreground hover:text-foreground">
-              <Github className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-foreground">
+            <Link href="https://github.com/fishyu-yu/whois" target="_blank" rel="noopener noreferrer" aria-label="打开 GitHub 仓库" title="GitHub 仓库">
+              <Github aria-hidden="true" className="size-5" />
+            </Link>
+          </Button>
           <ThemeToggle />
-        </div>
+        </nav>
       </div>
     </header>
   )

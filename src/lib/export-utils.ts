@@ -24,12 +24,12 @@ export function downloadBlob(blob: Blob, filename: string): void {
 
 /** Capture an isolated copy so export never changes the live result or scroll. */
 export async function exportResultImage(element: HTMLElement, query: string): Promise<void> {
-  const { toBlob } = await import('html-to-image')
-  await document.fonts.ready
-
+  // Capture before yielding: the user may start another query while the export
+  // module loads, which unmounts the original result and clears its dimensions.
   const container = document.createElement('div')
   container.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;'
   container.setAttribute('aria-hidden', 'true')
+  container.inert = true
   const snapshot = element.cloneNode(true) as HTMLElement
   snapshot.querySelectorAll('[data-export-ignore]').forEach(node => node.remove())
   // Export every structured field even when its on-screen section is collapsed.
@@ -38,10 +38,9 @@ export async function exportResultImage(element: HTMLElement, query: string): Pr
     button.setAttribute('aria-expanded', 'true')
     button.querySelector('[data-disclosure-chevron]')?.classList.add('rotate-180')
   })
-  const backgroundColor = getComputedStyle(document.body).backgroundColor
   Object.assign(snapshot.style, {
     width: `${element.clientWidth + 48}px`, maxWidth: 'none', margin: '0', padding: '24px',
-    boxSizing: 'border-box', backgroundColor,
+    boxSizing: 'border-box',
   })
   for (const node of [snapshot, ...snapshot.querySelectorAll<HTMLElement>('*')]) {
     node.style.setProperty('animation', 'none', 'important')
@@ -53,6 +52,12 @@ export async function exportResultImage(element: HTMLElement, query: string): Pr
   container.appendChild(snapshot)
   document.body.appendChild(container)
   try {
+    const { toBlob } = await import('html-to-image')
+    await document.fonts.ready
+    // Descendants inherit the active theme. Read its matching background after
+    // loading too, in case the user switched themes while the module was pending.
+    const backgroundColor = getComputedStyle(document.body).backgroundColor
+    snapshot.style.backgroundColor = backgroundColor
     const width = snapshot.scrollWidth
     const height = snapshot.scrollHeight
     // Bound canvas memory on mobile and avoid silently clipping long results.
