@@ -9,7 +9,9 @@
 未被重置。改造直接在现有 Next.js / React / Tailwind / Radix 项目上实施。
 
 API 路由、公开 GET/POST 参数与响应契约、WHOIS/RDAP 网络客户端和解析器、
-查询规范化/公共后缀逻辑、许可证、Logo 与 Wrangler 运行时配置均无代码变更。
+查询规范化/公共后缀逻辑、许可证与 Logo 均无代码变更。
+UI 阶段未修改 Wrangler 运行时配置；后续授权的 beta 自定义域名绑定
+持久化在 `wrangler.beta.jsonc`。
 没有新增运行时依赖、服务或数据库，没有操作生产环境。
 后续按用户明确要求提交并推送至 GitHub `beta` 分支，
 并部署独立的 Cloudflare `whois-beta` Worker、配置原生 Git 自动部署。
@@ -119,8 +121,11 @@ E2E 的固定数据仅存在于测试/审计浏览器的路由拦截中，生产
 
 ### 后续授权的 Cloudflare beta 部署
 
-已将 `whois-beta` 发布到 <https://whois-beta.yangzhan-ms.workers.dev>，
-并在该 Worker 保存 GitHub 仓库 `fishyu-yu/whois` 的 Workers Builds 连接。
+`whois-beta` 的主入口为 <https://whobeta.f1shyu.com>，
+自定义域名在 `wrangler.beta.jsonc` 中持久化。
+保留 <https://whois-beta.yangzhan-ms.workers.dev> 为备用入口，
+两个地址指向同一独立 beta Worker。
+该 Worker 已保存 GitHub 仓库 `fishyu-yu/whois` 的 Workers Builds 连接。
 该独立 Worker 的生产分支为 `beta`，根目录 `/`，其他分支预览关闭；
 此设置不改变 GitHub 默认分支 `master` 或现有生产入口。
 
@@ -129,10 +134,10 @@ E2E 的固定数据仅存在于测试/审计浏览器的路由拦截中，生产
 启用构建缓存并设置 `NEXT_TELEMETRY_DISABLED=1`，未新建 secret。
 后续 beta 推送由 Cloudflare 自动构建；具体提交是否部署成功，
 以 Cloudflare Builds 日志、部署状态及实际 API 验证为准。
-连接保存时尚未发生首次自动构建；本次文档与工作流更新的 beta 推送，
-将用于验证真实 Git 自动触发，结果以 Cloudflare 回读为准。
+绑定自定义域名不改变 beta 自动构建设置，后续部署同时更新两个入口。
 
-已在实际 Cloudflare beta 地址检查：首页 HTTP 200 且展示新界面；
+已在实际 Cloudflare beta 的 `workers.dev` 备用地址检查：
+首页 HTTP 200 且展示新界面；
 以下未拦截的查询均 HTTP 200，响应均少于 2 秒：
 
 | 查询 | 实际来源 | 解析字段数量 |
@@ -222,5 +227,6 @@ Slow 4G / 4×CPU 模拟和桌面 preset。没有与 E2E 并发测量，没有审
 - 测试浏览器为本机 Chrome，未将桌面视口模拟等同于真实手机硬件或
   Safari / Firefox 验证。现场 INP 与全球网络表现需要部署后的真实样本。
 - Node 生产构建完成，并在后续授权下发布独立 Cloudflare beta Worker。
-  OpenNext 和 Wrangler 运行时配置保留；自动部署改用 Workers Builds，
+  OpenNext 和已有 Worker 绑定保留；Wrangler 新增 beta 自定义域名绑定。
+  自动部署使用 Workers Builds，
   Actions 仅作手动备用。真实 Cloudflare 上游可用性仍应持续按实际查询核验。

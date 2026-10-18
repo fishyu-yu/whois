@@ -44,14 +44,18 @@ API 仍使用 `runtime = 'nodejs'`，不要改成 Next.js Edge Runtime。
 
 配置使用 `nodejs_compat` 和 `global_fetch_strictly_public`，
 入口为 `.open-next/worker.js`，静态资源目录为 `.open-next/assets`。
-当前启用 `workers.dev`，访问地址以 Wrangler 部署输出为准。
-不要将测试 Worker 地址替换为现有生产网站入口。
+beta 主入口为 <https://whobeta.f1shyu.com>，绑定独立的 `whois-beta` Worker。
+自定义域名保存在 `wrangler.beta.jsonc`，部署时继续维护该绑定。
+`workers_dev` 保持启用，备用入口为
+<https://whois-beta.yangzhan-ms.workers.dev>。
+两个入口指向同一 beta Worker，不改变现有生产网站入口。
 
 ### Workers Builds 自动部署
 
 2026-10-18 已在 Cloudflare 为现有 `whois-beta` 保存 GitHub 连接，
 仓库为 `fishyu-yu/whois`，自动部署由 [Workers Builds][builds] 执行。
-当前 beta 地址为 <https://whois-beta.yangzhan-ms.workers.dev>。
+beta 查询优先使用 <https://whobeta.f1shyu.com>，
+`workers.dev` 地址保留为备用入口。
 
 在该 Worker 的 Settings → Builds 中维护以下配置：
 
@@ -71,6 +75,7 @@ API 仍使用 `runtime = 'nodejs'`，不要改成 Next.js Edge Runtime。
   两个 beta 脚本均显式指定 `wrangler.beta.jsonc`。
 
 推送到 `beta` 后，Cloudflare 自动获取提交、执行构建命令并部署。
+自定义域名绑定不改变该自动构建流程，后续部署更新同一 Worker 的两个入口。
 此路径使用 Cloudflare 中的构建令牌，
 不要求 GitHub Actions secret `CLOUDFLARE_API_TOKEN`。
 连接保存或 Git 推送成功都不等于构建成功，应在该 Worker 的 Builds 页面

@@ -6,6 +6,9 @@
   "compatibility_date": "2026-10-04",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "workers_dev": true,
+  "routes": [
+    { "pattern": "whobeta.f1shyu.com", "custom_domain": true }
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

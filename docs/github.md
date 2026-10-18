@@ -68,7 +68,10 @@ About 与 Topics 已保存到 GitHub，并通过仓库 API 回读确认。
 2026-10-18 已将 `fishyu-yu/whois` 连接至 Cloudflare 原生 Workers Builds，
 独立 Worker `whois-beta` 的生产分支设置为 `beta`，关闭其他分支预览。
 推送到 `beta` 会触发 Cloudflare 构建并部署到
+<https://whobeta.f1shyu.com>；备用入口为
 <https://whois-beta.yangzhan-ms.workers.dev>。
+自定义域名绑定在 `wrangler.beta.jsonc` 中持久化，两个入口属于同一 Worker，
+后续 beta 推送仍通过原生 Workers Builds 自动更新。
 这个 Worker 的生产分支设置不改变 GitHub 默认分支或现有生产网站。
 
 原生路径复用 Cloudflare 的构建令牌，
