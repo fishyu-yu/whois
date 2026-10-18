@@ -65,12 +65,22 @@ About 与 Topics 已保存到 GitHub，并通过仓库 API 回读确认。
 ## 分支与部署
 
 `master` 是仓库的默认分支，`beta` 用于 Cloudflare 测试部署。
-仓库的 [Cloudflare beta 工作流](../.github/workflows/deploy-beta.yml)
-只对 `beta` 分支运行；它不改变默认分支，也不部署 `master`。
+2026-10-18 已将 `fishyu-yu/whois` 连接至 Cloudflare 原生 Workers Builds，
+独立 Worker `whois-beta` 的生产分支设置为 `beta`，关闭其他分支预览。
+推送到 `beta` 会触发 Cloudflare 构建并部署到
+<https://whois-beta.yangzhan-ms.workers.dev>。
+这个 Worker 的生产分支设置不改变 GitHub 默认分支或现有生产网站。
 
-推送到 `beta` 会触发部署工作流；手动运行时也应选择 `beta`。
-执行前需确认 Actions 凭据已配置，执行后核对任务状态、
-实际 Worker 地址及查询能力。步骤见[部署指南](deployment.md)。
+原生路径复用 Cloudflare 的构建令牌，
+无需 GitHub Actions secret `CLOUDFLARE_API_TOKEN`。
+仓库的 [Cloudflare beta 工作流](../.github/workflows/deploy-beta.yml)
+现仅保留 `workflow_dispatch` 手动备用入口，仍有 `beta` 分支保护条件，
+且仅此备用入口需要该 Actions secret。
+旧自动工作流首次运行曾因缺少 secret 失败；已取消它的 push 触发器，
+避免与原生构建重复部署。
+
+每次推送后在 Cloudflare Builds 核对提交、构建日志与部署状态，
+再验证实际 Worker 地址及查询能力。完整命令见[部署指南](deployment.md)。
 
 生产网站是否自动跟随 `master`，需要在实际托管平台确认。
 GitHub Website、默认分支和 Pages 开关均不能证明生产部署已更新。

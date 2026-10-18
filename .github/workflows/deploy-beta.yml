@@ -1,8 +1,7 @@
-name: Deploy beta to Cloudflare
+name: Deploy beta to Cloudflare (manual fallback)
 
+# Native Cloudflare Workers Builds handles pushes to beta.
 on:
-  push:
-    branches: [beta]
   workflow_dispatch:
 
 permissions:

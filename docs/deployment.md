@@ -39,13 +39,42 @@ API 仍使用 `runtime = 'nodejs'`，不要改成 Next.js Edge Runtime。
 | --- | --- |
 | [`open-next.config.ts`](../open-next.config.ts) | OpenNext Cloudflare 适配配置 |
 | [`wrangler.beta.jsonc`](../wrangler.beta.jsonc) | `whois-beta` Worker、账号、资源与兼容标志 |
-| [beta 工作流](../.github/workflows/deploy-beta.yml) | `beta` 分支的检查、构建与部署 |
+| [beta 工作流](../.github/workflows/deploy-beta.yml) | `beta` 分支的手动部署备用入口 |
 | [`public/_headers`](../public/_headers) | Workers 静态资源缓存规则 |
 
 配置使用 `nodejs_compat` 和 `global_fetch_strictly_public`，
 入口为 `.open-next/worker.js`，静态资源目录为 `.open-next/assets`。
 当前启用 `workers.dev`，访问地址以 Wrangler 部署输出为准。
 不要将测试 Worker 地址替换为现有生产网站入口。
+
+### Workers Builds 自动部署
+
+2026-10-18 已在 Cloudflare 为现有 `whois-beta` 保存 GitHub 连接，
+仓库为 `fishyu-yu/whois`，自动部署由 [Workers Builds][builds] 执行。
+当前 beta 地址为 <https://whois-beta.yangzhan-ms.workers.dev>。
+
+在该 Worker 的 Settings → Builds 中维护以下配置：
+
+- 仓库分支：`beta`；这是独立 `whois-beta` Worker 的生产分支设置，
+  不改变 GitHub 默认分支 `master` 或现有生产网站。
+- 关闭其他分支的 Preview Builds；根目录为 `/`。
+- 构建命令：
+
+  ```bash
+  npm run lint:all && npm test && npm run build:beta && npm run typecheck
+  ```
+
+- 部署命令：`npm run deploy:beta`。
+- 使用现有 `whois build token`，启用构建缓存，
+  构建变量为 `NEXT_TELEMETRY_DISABLED=1`。
+- Node.js 版本沿用仓库 `.nvmrc`；保留手动 OpenNext 配置，
+  两个 beta 脚本均显式指定 `wrangler.beta.jsonc`。
+
+推送到 `beta` 后，Cloudflare 自动获取提交、执行构建命令并部署。
+此路径使用 Cloudflare 中的构建令牌，
+不要求 GitHub Actions secret `CLOUDFLARE_API_TOKEN`。
+连接保存或 Git 推送成功都不等于构建成功，应在该 Worker 的 Builds 页面
+核对提交、日志和部署状态，再验证实际 API 查询。
 
 ### 自行部署
 
@@ -71,25 +100,27 @@ npm run deploy:beta
 `.open-next/`、`.wrangler/` 和 `.dev.vars*` 已被 Git 忽略。
 构建产物与凭据不应提交到仓库。
 
-### GitHub Actions
+### GitHub Actions 手动备用部署
 
-现有 [Deploy beta to Cloudflare](../.github/workflows/deploy-beta.yml)
-工作流配置如下：
+保留 [Deploy beta to Cloudflare (manual fallback)](../.github/workflows/deploy-beta.yml)
+作为手动备用入口，避免与 Workers Builds 在推送时重复部署：
 
-- 触发条件为推送到 `beta`，或在 `beta` 分支手动执行 `workflow_dispatch`。
+- 仅支持 `workflow_dispatch`，手动运行时必须选择 `beta`。
 - 使用 `.nvmrc` 的 Node.js 版本和 `npm ci`。
 - 依次执行 `lint:all`、`test`、`build:beta`、`typecheck` 和 `deploy:beta`。
-- 要求仓库 Actions secret `CLOUDFLARE_API_TOKEN`；缺少时提前失败。
+- 仅此备用路径要求仓库 Actions secret `CLOUDFLARE_API_TOKEN`；
+  缺少时提前失败。
 - 部署目标为配置中的 `whois-beta`，工作流不部署 `master`。
 
 GitHub 网页的 Run workflow 按钮要求工作流文件也存在于默认分支，
-出现按钮后再选择 `beta` 执行；仅推送到 `beta` 可触发 push 部署，
-但不保证出现手动运行入口。参见 [workflow_dispatch 说明][dispatch]。
+出现按钮后再选择 `beta` 执行。参见 [workflow_dispatch 说明][dispatch]。
 
-维护者需在仓库 Settings → Secrets and variables → Actions 配置对应 secret。
-Fork 部署还需更换 Cloudflare 账号与 Worker 配置。
-只有工作流文件已推送到对应分支、凭据已配置且任务成功，才表示部署完成。
-推送成功不代表部署成功，应以 Actions 运行和实际查询验证为准。
+2026-10-18 首次 beta 推送曾触发旧 Actions 自动部署，
+因缺少该 secret 在凭据检查处失败，并未完成部署。
+后续改用上方原生 Workers Builds，Actions 不再监听 push。
+如需备用路径，由维护者在仓库 Settings → Secrets and variables → Actions
+配置对应 secret；Fork 部署还需更换 Cloudflare 账号与 Worker 配置。
+手动任务成功并完成实际查询验证后，才能确认该次备用部署完成。
 
 ## 出站网络与上游限制
 
@@ -136,6 +167,7 @@ npm run test:networks -- --base https://your-host.example
 [IP / ASN 报告](network-verification.md)，结果以各报告日期为准。
 
 [opennext]: https://opennext.js.org/cloudflare/get-started
+[builds]: https://developers.cloudflare.com/workers/ci-cd/builds/
 [dispatch]: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch
 [tcp-sockets]: https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/
 [es-whois]: https://www.dominios.es/es/sobre-dominios/valores-anadidos/whois-43

@@ -9,10 +9,11 @@
 未被重置。改造直接在现有 Next.js / React / Tailwind / Radix 项目上实施。
 
 API 路由、公开 GET/POST 参数与响应契约、WHOIS/RDAP 网络客户端和解析器、
-查询规范化/公共后缀逻辑、许可证、Logo 与部署配置均无代码变更。
+查询规范化/公共后缀逻辑、许可证、Logo 与 Wrangler 运行时配置均无代码变更。
 没有新增运行时依赖、服务或数据库，没有操作生产环境。
-后续按用户明确要求提交并推送至 GitHub `beta` 分支；仓库现有的
-`Deploy beta to Cloudflare` 工作流会在该分支推送后自动执行 beta 部署。
+后续按用户明确要求提交并推送至 GitHub `beta` 分支，
+并部署独立的 Cloudflare `whois-beta` Worker、配置原生 Git 自动部署。
+`master` 分支和现有生产网站未修改。
 
 ## 实现内容与设计决策
 
@@ -74,6 +75,8 @@ API 路由、公开 GET/POST 参数与响应契约、WHOIS/RDAP 网络客户端�
 | 测试夹具（新增） | `tests/e2e/fixtures/whois.ts` |
 | 验证配置 | `eslint.config.mjs`（排除本地 `.claude` 和构建产物，不排除业务代码/测试） |
 | 文档 | 更新 `DESIGN_SYSTEM.md`、新增本文件 |
+| 手动备用工作流 | `.github/workflows/deploy-beta.yml` |
+| 自动部署文档 | `docs/deployment.md`、`docs/github.md` |
 
 ## 验证记录
 
@@ -113,6 +116,41 @@ IME、快捷键、历史焦点、取消、过期响应、长字段与异步 PNG 
 | `AS15169` | 200 | `rdap-rir` | 21 |
 
 E2E 的固定数据仅存在于测试/审计浏览器的路由拦截中，生产代码没有 Mock。
+
+### 后续授权的 Cloudflare beta 部署
+
+已将 `whois-beta` 发布到 <https://whois-beta.yangzhan-ms.workers.dev>，
+并在该 Worker 保存 GitHub 仓库 `fishyu-yu/whois` 的 Workers Builds 连接。
+该独立 Worker 的生产分支为 `beta`，根目录 `/`，其他分支预览关闭；
+此设置不改变 GitHub 默认分支 `master` 或现有生产入口。
+
+原生构建依次执行 `lint:all`、`test`、`build:beta`、`typecheck`，
+随后执行 `npm run deploy:beta`。复用现有 `whois build token`，
+启用构建缓存并设置 `NEXT_TELEMETRY_DISABLED=1`，未新建 secret。
+后续 beta 推送由 Cloudflare 自动构建；具体提交是否部署成功，
+以 Cloudflare Builds 日志、部署状态及实际 API 验证为准。
+连接保存时尚未发生首次自动构建；本次文档与工作流更新的 beta 推送，
+将用于验证真实 Git 自动触发，结果以 Cloudflare 回读为准。
+
+已在实际 Cloudflare beta 地址检查：首页 HTTP 200 且展示新界面；
+以下未拦截的查询均 HTTP 200，响应均少于 2 秒：
+
+| 查询 | 实际来源 | 解析字段数量 |
+| --- | --- | --- |
+| `google.com` | `rdap-registrar` | 22 |
+| `8.8.8.8` | `rdap-rir` | 27 |
+| `AS15169` | `rdap-rir` | 21 |
+| `baidu.cn`（强制 WHOIS） | `registry` | 16 |
+
+这是 beta 边缘运行时的验证，不能替代首次原生自动构建验证。
+脱敏结果保存在被 Git 忽略的 `.local/cloudflare-beta-live-smoke.json`，
+没有提交原始联系人数据。
+
+最初 GitHub Actions 自动部署因缺少 `CLOUDFLARE_API_TOKEN`，
+在凭据检查处失败。原生 Workers Builds 使用 Cloudflare 构建令牌，
+无需该 GitHub secret。现有 Actions 已取消 push 触发器，
+保留仅允许 `beta` 的手动备用部署，备用路径仍需要该 secret。
+完整配置见 [部署指南](docs/deployment.md)。
 
 ## 视觉、无障碍与性能
 
@@ -183,5 +221,6 @@ Slow 4G / 4×CPU 模拟和桌面 preset。没有与 E2E 并发测量，没有审
   或本机快速响应当作该指标已达标的依据。
 - 测试浏览器为本机 Chrome，未将桌面视口模拟等同于真实手机硬件或
   Safari / Firefox 验证。现场 INP 与全球网络表现需要部署后的真实样本。
-- Node 生产构建完成；未执行 Cloudflare 部署。OpenNext、Wrangler 和
-  Cloudflare 工作流配置保留原状。
+- Node 生产构建完成，并在后续授权下发布独立 Cloudflare beta Worker。
+  OpenNext 和 Wrangler 运行时配置保留；自动部署改用 Workers Builds，
+  Actions 仅作手动备用。真实 Cloudflare 上游可用性仍应持续按实际查询核验。
